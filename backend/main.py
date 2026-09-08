@@ -2,10 +2,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
+import threading
+import sys
 from dotenv import load_dotenv
 import requests
 
+# Add the root directory to sys.path so we can import sniper
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from sniper import start_sniper_bot
+
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    print("Spawning 24/7 Sniper Bot Thread...")
+    thread = threading.Thread(target=start_sniper_bot, daemon=True)
+    thread.start()
 
 # Allow frontend to access API
 app.add_middleware(

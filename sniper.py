@@ -314,7 +314,7 @@ def check_seller_safety(seller):
 # -------------------------------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------------------------------
-def run_sniper():
+def start_sniper_bot():
     print("=====================================================")
     print("= EBAY 24/7 WATCH SNIPER (V5 DESCRIPTION DEEP-SCAN) =")
     print("=====================================================")
@@ -545,7 +545,7 @@ def run_sniper():
 
 if __name__ == "__main__":
     try:
-        run_sniper()
+        start_sniper_bot()
     except KeyboardInterrupt:
         print("\nSniper Bot Terminated.")
         sys.exit(0)
