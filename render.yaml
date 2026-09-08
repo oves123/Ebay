@@ -1,0 +1,32 @@
+services:
+  # The FastAPI Backend (Connects your React UI to Supabase)
+  - type: web
+    name: ebay-sniper-backend
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+        
+  # The 24/7 Python Sniper Bot (Hunts for deals autonomously)
+  - type: worker
+    name: ebay-sniper-bot
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python sniper.py"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: EBAY_ENV
+        value: "production"
+      - key: EBAY_PRD_APP_ID
+        sync: false
+      - key: EBAY_PRD_CERT_ID
+        sync: false
+      - key: EBAY_DEV_ID
+        sync: false

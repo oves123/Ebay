@@ -1,0 +1,59 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.cunicopia-dev/ebay-mcp",
+  "title": "eBay Browse",
+  "description": "eBay Browse API MCP server — buy-side listing search and price intelligence.",
+  "repository": {
+    "url": "https://github.com/cunicopia-dev/ebay-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "ebay-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "uvx",
+      "environmentVariables": [
+        {
+          "name": "EBAY_ENV",
+          "description": "Which eBay environment to use: \"production\" or \"sandbox\". Defaults to production.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "EBAY_PRD_APP_ID",
+          "description": "eBay production App ID (Client ID) from your eBay developer account. Required for EBAY_ENV=production.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "EBAY_PRD_CERT_ID",
+          "description": "eBay production Cert ID (Client Secret). Required for EBAY_ENV=production.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "EBAY_SBX_APP_ID",
+          "description": "eBay sandbox App ID (Client ID). Required for EBAY_ENV=sandbox.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "EBAY_SBX_CERT_ID",
+          "description": "eBay sandbox Cert ID (Client Secret). Required for EBAY_ENV=sandbox.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

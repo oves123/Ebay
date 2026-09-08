@@ -1,0 +1,24 @@
+=== RAW REQUEST ===
+POST https://api.ebay.com/identity/v1/oauth2/token
+
+Headers:
+Authorization: Basic [BASE64_ENCODED_APP_ID:CERT_ID_HIDDEN_FOR_SECURITY]
+Content-Type: application/x-www-form-urlencoded
+
+Body:
+grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope
+
+
+=== RAW RESPONSE ===
+Status: 401 Unauthorized
+
+Headers:
+rlogid: t6ldssk67dlkr%3D9jgrwm56%60jhs.211af2da%3Db*w%60ut02%2B%3E%7B%7D%3F%60-1a06bf1bbdc-0x236d
+WWW-Authenticate: Basic
+Content-Type: application/json
+x-ebay-pop-id: UFES2-LVSAZ04-api
+x-traffic-request-id: ce4bdacfa9d3fd93d0144c87d294d4e83
+Date: Fri, 04 Sep 2026 10:23:19 GMT
+
+Body:
+{"error":"invalid_client","error_description":"client authentication failed"}
