@@ -28,15 +28,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-load_dotenv("C:/Users/Oves/Desktop/Ebay/ebay-mcp/.env")
+# load .env for local dev; on Render, env vars are injected automatically
+load_dotenv()
+
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
 
-headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
-} if SUPABASE_KEY else {}
+def get_headers():
+    key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
 
 @app.get("/api/sweep")
 def get_sweep_results():
@@ -44,7 +48,8 @@ def get_sweep_results():
         return {"data": [], "status": "Supabase not configured"}
         
     try:
-        res = requests.get(f"{SUPABASE_URL}/rest/v1/deep_sweep_deals?select=*", headers=headers)
+        url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
+        res = requests.get(f"{url}/rest/v1/deep_sweep_deals?select=*", headers=get_headers())
         if res.status_code == 200:
             data = res.json()
             # Map snake_case back to PascalCase for the React UI to consume seamlessly
@@ -80,8 +85,8 @@ def get_live_snipes():
         return {"data": [], "status": "Supabase not configured"}
         
     try:
-        # Order by id descending, limit 50
-        res = requests.get(f"{SUPABASE_URL}/rest/v1/live_snipes?select=*&order=id.desc&limit=50", headers=headers)
+        url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
+        res = requests.get(f"{url}/rest/v1/live_snipes?select=*&order=id.desc&limit=50", headers=get_headers())
         if res.status_code == 200:
             data = res.json()
             mapped_data = []
