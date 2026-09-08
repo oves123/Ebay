@@ -1,10 +1,7 @@
 import json
 import time
-import winsound
-import webbrowser
 from datetime import datetime
 import sys
-import subprocess
 import threading
 import queue
 import re
@@ -217,43 +214,6 @@ def find_contact_info(text):
 # STATE & HELPERS
 # -------------------------------------------------------------------------
 seen_items = set()
-auto_open_timestamps = []
-tts_queue = queue.Queue()
-
-def tts_worker():
-    while True:
-        text = tts_queue.get()
-        if text is None:
-            break
-        cmd = f'powershell -Command "Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak(\'{text}\')"'
-        subprocess.run(cmd, shell=True)
-        tts_queue.task_done()
-
-threading.Thread(target=tts_worker, daemon=True).start()
-
-def play_tts_alarm(title, price_usd, is_gold=False, market="US"):
-    clean_title = "".join(c for c in title if c.isalnum() or c.isspace())
-    prefix = ""
-    if market == "EBAY_GB":
-        prefix = "U K Arbitrage Alert. "
-    elif market == "EBAY_DE":
-        prefix = "Germany Arbitrage Alert. "
-        
-    if is_gold:
-        text = f"{prefix}GOLD JACKPOT ALERT. {clean_title} for {int(price_usd)} U S dollars."
-    else:
-        text = f"{prefix}Snipe alert. {clean_title} for {int(price_usd)} U S dollars."
-    tts_queue.put(text)
-
-def should_auto_open():
-    global auto_open_timestamps
-    now = time.time()
-    auto_open_timestamps = [t for t in auto_open_timestamps if now - t < 60]
-    
-    if len(auto_open_timestamps) < MAX_AUTO_OPENS_PER_MIN:
-        auto_open_timestamps.append(now)
-        return True
-    return False
 
 def format_buying_options(options_list):
     tags = []
@@ -528,15 +488,6 @@ def start_sniper_bot():
                                 
                     except Exception as e:
                         print(f"Export Error: {e}")
-                    
-                    # Alarm & Auto-open
-                    play_tts_alarm(title, price_usd, is_gold=is_gold_jackpot, market=market)
-                        
-                    if should_auto_open():
-                        print("-> Auto-opening checkout tab!")
-                        webbrowser.open(url)
-                    else:
-                        print("-> Auto-open rate limited. Click link manually!")
                         
             except Exception as e:
                 print(f"API Error on {query} ({market}): {e}")
