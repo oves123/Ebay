@@ -49,33 +49,44 @@ def get_sweep_results():
         
     try:
         url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
-        res = requests.get(f"{url}/rest/v1/deep_sweep_deals?select=*", headers=get_headers())
-        if res.status_code == 200:
-            data = res.json()
-            # Map snake_case back to PascalCase for the React UI to consume seamlessly
-            mapped_data = []
-            for item in data:
-                mapped_data.append({
-                    "Query": item.get("query"),
-                    "Region": item.get("region"),
-                    "Title": item.get("title"),
-                    "Price": item.get("price"),
-                    "TimeLeft": item.get("time_left"),
-                    "TimeListed": item.get("time_listed"),
-                    "Gender": item.get("gender"),
-                    "BuyingOptions": item.get("buying_options"),
-                    "Condition": item.get("condition"),
-                    "Health": item.get("health"),
-                    "ScrapValue": item.get("scrap_value"),
-                    "Contacts": item.get("contacts"),
-                    "Seller": item.get("seller"),
-                    "Link": item.get("link"),
-                    "ExcelLink": item.get("excel_link"),
-                    "ImageUrl": item.get("image_url")
-                })
-            return {"data": mapped_data, "count": len(mapped_data)}
-        else:
-            return {"error": f"Supabase error: {res.text}"}
+        
+        mapped_data = []
+        offset = 0
+        limit = 1000
+        headers = get_headers()
+        
+        while True:
+            res = requests.get(f"{url}/rest/v1/deep_sweep_deals?select=*&limit={limit}&offset={offset}", headers=headers)
+            if res.status_code == 200:
+                data = res.json()
+                if not data:
+                    break
+                    
+                # Map snake_case back to PascalCase for the React UI to consume seamlessly
+                for item in data:
+                    mapped_data.append({
+                        "Query": item.get("query"),
+                        "Region": item.get("region"),
+                        "Title": item.get("title"),
+                        "Price": item.get("price"),
+                        "TimeLeft": item.get("time_left"),
+                        "TimeListed": item.get("time_listed"),
+                        "Gender": item.get("gender"),
+                        "BuyingOptions": item.get("buying_options"),
+                        "Condition": item.get("condition"),
+                        "Health": item.get("health"),
+                        "ScrapValue": item.get("scrap_value"),
+                        "Contacts": item.get("contacts"),
+                        "Seller": item.get("seller"),
+                        "Link": item.get("link"),
+                        "ExcelLink": item.get("excel_link"),
+                        "ImageUrl": item.get("image_url")
+                    })
+                offset += limit
+            else:
+                return {"error": f"Supabase error: {res.text}"}
+                
+        return {"data": mapped_data, "count": len(mapped_data)}
     except Exception as e:
         return {"error": str(e)}
 
