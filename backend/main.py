@@ -4,6 +4,7 @@ import json
 import os
 import threading
 import sys
+import concurrent.futures
 from dotenv import load_dotenv
 import requests
 
@@ -51,40 +52,53 @@ def get_sweep_results():
         url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
         
         mapped_data = []
-        offset = 0
         limit = 1000
         headers = get_headers()
         
-        while True:
+        # First, fetch one row with exact count to know how many we need
+        count_res = requests.get(f"{url}/rest/v1/deep_sweep_deals?select=id&limit=1", headers=headers)
+        # In PostgREST, getting exact count requires Prefer: count=exact, let's just do a quick count request
+        count_headers = headers.copy()
+        count_headers["Prefer"] = "count=exact"
+        count_req = requests.head(f"{url}/rest/v1/deep_sweep_deals", headers=count_headers)
+        total_count = int(count_req.headers.get("Content-Range", "0-0/0").split("/")[-1])
+        
+        if total_count == 0:
+            return {"data": [], "count": 0}
+            
+        def fetch_chunk(offset):
             res = requests.get(f"{url}/rest/v1/deep_sweep_deals?select=*&limit={limit}&offset={offset}", headers=headers)
             if res.status_code == 200:
-                data = res.json()
-                if not data:
-                    break
-                    
-                # Map snake_case back to PascalCase for the React UI to consume seamlessly
-                for item in data:
-                    mapped_data.append({
-                        "Query": item.get("query"),
-                        "Region": item.get("region"),
-                        "Title": item.get("title"),
-                        "Price": item.get("price"),
-                        "TimeLeft": item.get("time_left"),
-                        "TimeListed": item.get("time_listed"),
-                        "Gender": item.get("gender"),
-                        "BuyingOptions": item.get("buying_options"),
-                        "Condition": item.get("condition"),
-                        "Health": item.get("health"),
-                        "ScrapValue": item.get("scrap_value"),
-                        "Contacts": item.get("contacts"),
-                        "Seller": item.get("seller"),
-                        "Link": item.get("link"),
-                        "ExcelLink": item.get("excel_link"),
-                        "ImageUrl": item.get("image_url")
-                    })
-                offset += limit
-            else:
-                return {"error": f"Supabase error: {res.text}"}
+                return res.json()
+            return []
+
+        offsets = list(range(0, total_count, limit))
+        all_raw_data = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            results = executor.map(fetch_chunk, offsets)
+            for chunk in results:
+                all_raw_data.extend(chunk)
+                
+        # Map snake_case back to PascalCase for the React UI to consume seamlessly
+        for item in all_raw_data:
+            mapped_data.append({
+                "Query": item.get("query"),
+                "Region": item.get("region"),
+                "Title": item.get("title"),
+                "Price": item.get("price"),
+                "TimeLeft": item.get("time_left"),
+                "TimeListed": item.get("time_listed"),
+                "Gender": item.get("gender"),
+                "BuyingOptions": item.get("buying_options"),
+                "Condition": item.get("condition"),
+                "Health": item.get("health"),
+                "ScrapValue": item.get("scrap_value"),
+                "Contacts": item.get("contacts"),
+                "Seller": item.get("seller"),
+                "Link": item.get("link"),
+                "ExcelLink": item.get("excel_link"),
+                "ImageUrl": item.get("image_url")
+            })
                 
         return {"data": mapped_data, "count": len(mapped_data)}
     except Exception as e:
