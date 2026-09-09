@@ -13,6 +13,8 @@ headers = {
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json"
 }
+insert_headers = headers.copy()
+insert_headers["Prefer"] = "resolution=ignore-duplicates"
 
 csv_file = "c:/Users/Oves/Desktop/Ebay/deep_sweep_results.csv"
 print(f"Loading {csv_file}...")
@@ -65,7 +67,7 @@ requests.delete(f"{SUPABASE_URL}/rest/v1/deep_sweep_deals?id=gt.0", headers=head
 batch_size = 1000
 for i in range(0, len(payload), batch_size):
     batch = payload[i:i+batch_size]
-    res = requests.post(f"{SUPABASE_URL}/rest/v1/deep_sweep_deals", headers=headers, json=batch)
+    res = requests.post(f"{SUPABASE_URL}/rest/v1/deep_sweep_deals", headers=insert_headers, json=batch)
     if res.status_code in (200, 201):
         print(f"Pushed batch {i//batch_size + 1}")
     else:

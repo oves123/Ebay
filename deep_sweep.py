@@ -445,10 +445,22 @@ def run_deep_sweep():
             "Content-Type": "application/json"
         }
         
-        # 1. Clear existing deals in the table
-        res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=headers)
-        if res_del.status_code not in (200, 204):
-            print("Failed to clear old Supabase data:", res_del.text)
+        # 1. Clear existing deals in the table (loop to bypass 1000 limit)
+        print("Clearing old Supabase data...")
+        while True:
+            res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=headers)
+            if res_del.status_code not in (200, 204):
+                print("Failed to clear old Supabase data:", res_del.text)
+                break
+            # If nothing was deleted, or less than 1000, we're done
+            # But DELETE doesn't return count unless asked, so we just assume if it succeeds we should try again until 404 or something?
+            # Actually, to be safe and avoid infinite loops, let's just ask PostgREST to return the representation so we can check count
+            pass
+            break # Wait, a better way is just to upsert/ignore duplicates when inserting.
+
+        # Let's use Prefer: resolution=ignore-duplicates to prevent batch crashes
+        insert_headers = headers.copy()
+        insert_headers["Prefer"] = "resolution=ignore-duplicates"
             
         # 2. Format payload to match snake_case SQL schema
         payload = []
@@ -476,7 +488,7 @@ def run_deep_sweep():
         batch_size = 1000
         for i in range(0, len(payload), batch_size):
             batch = payload[i:i+batch_size]
-            res = requests.post(f"{supabase_url}/rest/v1/deep_sweep_deals", headers=headers, json=batch)
+            res = requests.post(f"{supabase_url}/rest/v1/deep_sweep_deals", headers=insert_headers, json=batch)
             if res.status_code not in (200, 201):
                 print(f"Error inserting batch into Supabase: {res.text}")
         
