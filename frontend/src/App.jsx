@@ -198,13 +198,12 @@ function App() {
         </div>
 
         <div className="controls-bar" style={{ marginBottom: '1rem' }}>
-          <div className="search-container" style={{ display: 'flex', gap: '1rem', flex: 1 }}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+          <div className="search-container">
+            <div className="search-input-wrapper">
               <Search className="search-icon" />
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ width: '100%' }}
                 placeholder="Search watches, brands, keywords..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -212,8 +211,7 @@ function App() {
             </div>
             
             <select 
-              className="search-input" 
-              style={{ paddingLeft: '1rem', width: 'auto', minWidth: '200px' }}
+              className="search-select" 
               value={selectedCategory}
               onChange={(e) => {
                 setSelectedCategory(e.target.value);
@@ -226,9 +224,9 @@ function App() {
             </select>
           </div>
           
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div className="action-buttons-container">
             {activeTab === 'live' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+              <label className="auto-refresh-label">
                 <input 
                   type="checkbox" 
                   checked={isAutoPolling} 
@@ -248,13 +246,13 @@ function App() {
         </div>
 
         {/* Quick Filter Chips */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-          <button className={`badge ${filters.mens ? 'badge-blue' : ''}`} style={{ cursor: 'pointer', border: filters.mens ? '' : '1px solid var(--border-color)', background: filters.mens ? '' : 'transparent', color: filters.mens ? '' : 'var(--text-secondary)' }} onClick={() => toggleFilter('mens')}>🔵 Mens</button>
-          <button className={`badge ${filters.womens ? 'badge-gold' : ''}`} style={{ cursor: 'pointer', border: filters.womens ? '' : '1px solid var(--border-color)', background: filters.womens ? '' : 'transparent', color: filters.womens ? '' : 'var(--text-secondary)' }} onClick={() => toggleFilter('womens')}>🔴 Womens</button>
-          <button className={`badge ${filters.bidding ? 'badge-blue' : ''}`} style={{ cursor: 'pointer', border: filters.bidding ? '' : '1px solid var(--border-color)', background: filters.bidding ? '' : 'transparent', color: filters.bidding ? '' : 'var(--text-secondary)' }} onClick={() => toggleFilter('bidding')}>💰 Bidding</button>
-          <button className={`badge ${filters.buyItNow ? 'badge-blue' : ''}`} style={{ cursor: 'pointer', border: filters.buyItNow ? '' : '1px solid var(--border-color)', background: filters.buyItNow ? '' : 'transparent', color: filters.buyItNow ? '' : 'var(--text-secondary)' }} onClick={() => toggleFilter('buyItNow')}>⚡ Buy It Now</button>
-          <button className={`badge ${filters.acceptsOffers ? 'badge-blue' : ''}`} style={{ cursor: 'pointer', border: filters.acceptsOffers ? '' : '1px solid var(--border-color)', background: filters.acceptsOffers ? '' : 'transparent', color: filters.acceptsOffers ? '' : 'var(--text-secondary)' }} onClick={() => toggleFilter('acceptsOffers')}>🤝 Accepts Offers</button>
-          <button className={`badge ${filters.belowScrap ? 'badge-gold' : ''}`} style={{ cursor: 'pointer', border: filters.belowScrap ? '' : '1px solid var(--border-color)', background: filters.belowScrap ? '' : 'transparent', color: filters.belowScrap ? '' : 'var(--text-secondary)' }} onClick={() => toggleFilter('belowScrap')}>🔥 Below Scrap Value</button>
+        <div className="filter-chips-container">
+          <button className={`badge ${filters.mens ? 'badge-blue' : 'badge-inactive'}`} onClick={() => toggleFilter('mens')}>🔵 Mens</button>
+          <button className={`badge ${filters.womens ? 'badge-gold' : 'badge-inactive'}`} onClick={() => toggleFilter('womens')}>🔴 Womens</button>
+          <button className={`badge ${filters.bidding ? 'badge-blue' : 'badge-inactive'}`} onClick={() => toggleFilter('bidding')}>💰 Bidding</button>
+          <button className={`badge ${filters.buyItNow ? 'badge-blue' : 'badge-inactive'}`} onClick={() => toggleFilter('buyItNow')}>⚡ Buy It Now</button>
+          <button className={`badge ${filters.acceptsOffers ? 'badge-blue' : 'badge-inactive'}`} onClick={() => toggleFilter('acceptsOffers')}>🤝 Accepts Offers</button>
+          <button className={`badge ${filters.belowScrap ? 'badge-gold' : 'badge-inactive'}`} onClick={() => toggleFilter('belowScrap')}>🔥 Below Scrap Value</button>
         </div>
 
         {loading ? (
@@ -286,31 +284,31 @@ function App() {
                         {item.ImageUrl ? (
                           <img src={item.ImageUrl} alt="Watch" />
                         ) : (
-                          <div style={{ width: '60px', height: '60px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>No Img</div>
+                          <div className="no-img-placeholder">No Img</div>
                         )}
                       </td>
-                      <td className="cell-title">
+                      <td className="cell-title" data-label="Title">
                         <div style={{ marginBottom: '4px' }}>{item.Title}</div>
                         {item.Condition && <span className="badge badge-blue" style={{ marginRight: '8px' }}>{item.Condition}</span>}
                         {item.Health && item.Health !== 'CLEAN' && <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>{item.Health}</span>}
                       </td>
-                      <td>
+                      <td data-label="Format & Gender">
                         <div style={{ fontSize: '1.05rem', marginBottom: '6px', fontWeight: '500' }}>{item.Gender}</div>
                         <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{item.BuyingOptions}</div>
                       </td>
-                      <td className="cell-price">${item.Price}</td>
-                      <td>
+                      <td className="cell-price" data-label="Price">${item.Price}</td>
+                      <td data-label="Listed / Time Left">
                         <div style={{ fontSize: '1.05rem', marginBottom: '6px', fontWeight: '500' }}>{item.TimeLeft} left</div>
                         <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Listed: {item.TimeListed || 'Unknown'}</div>
                       </td>
-                      <td>
+                      <td data-label="Scrap Value">
                         {item.ScrapValue !== 'N/A' ? (
                           <span className="badge badge-gold">{item.ScrapValue}</span>
                         ) : (
                           <span style={{ color: 'var(--text-secondary)' }}>-</span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Actions">
                         <div className="cell-actions">
                           <button 
                             className="action-btn" 
@@ -352,23 +350,21 @@ function App() {
             
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border-color)', backgroundColor: '#f8fafc' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <div className="pagination-container">
+                <span className="pagination-info">
                   Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredData.length)} of {filteredData.length} entries
                 </span>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="pagination-buttons">
                   <button 
                     className="btn btn-outline" 
-                    style={{ padding: '0.5rem 1rem' }}
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   >
                     Previous
                   </button>
-                  <span style={{ padding: '0.5rem', fontWeight: '500' }}>Page {currentPage} of {totalPages}</span>
+                  <span className="pagination-page-indicator">Page {currentPage} of {totalPages}</span>
                   <button 
                     className="btn btn-outline" 
-                    style={{ padding: '0.5rem 1rem' }}
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   >
