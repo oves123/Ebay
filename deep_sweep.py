@@ -448,21 +448,13 @@ def run_deep_sweep():
         # 1. Clear existing deals in the table (loop to bypass 1000 limit)
         print("Clearing old Supabase data...")
         while True:
-            # We must use Prefer: return=representation to get the deleted rows back so we know when to stop
             del_headers = headers.copy()
             del_headers["Prefer"] = "return=representation"
             res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=del_headers)
-            if res_del.status_code not in (200, 204):
-                print("Failed to clear old Supabase data:", res_del.text)
-                break
-            
-            # If nothing was deleted, or we deleted less than 1000 (the limit), we're done
+            if res_del.status_code not in (200, 204): break
             try:
-                deleted_rows = res_del.json()
-                if len(deleted_rows) < 1000:
-                    break
-            except:
-                break
+                if len(res_del.json()) < 1000: break
+            except: break
 
         # Let's use Prefer: resolution=ignore-duplicates to prevent batch crashes
         insert_headers = headers.copy()
