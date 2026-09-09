@@ -10,6 +10,9 @@ import concurrent.futures
 
 from ebay_mcp.browse import EbayBrowseClient
 from ebay_mcp.config import load_config
+from dotenv import load_dotenv
+
+load_dotenv("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env")
 
 # -------------------------------------------------------------------------
 # CONFIGURATION V3 (Ending Soonest & Global Arbitrage)
