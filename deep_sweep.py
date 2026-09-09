@@ -448,15 +448,21 @@ def run_deep_sweep():
         # 1. Clear existing deals in the table (loop to bypass 1000 limit)
         print("Clearing old Supabase data...")
         while True:
-            res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=headers)
+            # We must use Prefer: return=representation to get the deleted rows back so we know when to stop
+            del_headers = headers.copy()
+            del_headers["Prefer"] = "return=representation"
+            res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=del_headers)
             if res_del.status_code not in (200, 204):
                 print("Failed to clear old Supabase data:", res_del.text)
                 break
-            # If nothing was deleted, or less than 1000, we're done
-            # But DELETE doesn't return count unless asked, so we just assume if it succeeds we should try again until 404 or something?
-            # Actually, to be safe and avoid infinite loops, let's just ask PostgREST to return the representation so we can check count
-            pass
-            break # Wait, a better way is just to upsert/ignore duplicates when inserting.
+            
+            # If nothing was deleted, or we deleted less than 1000 (the limit), we're done
+            try:
+                deleted_rows = res_del.json()
+                if len(deleted_rows) < 1000:
+                    break
+            except:
+                break
 
         # Let's use Prefer: resolution=ignore-duplicates to prevent batch crashes
         insert_headers = headers.copy()
@@ -488,7 +494,8 @@ def run_deep_sweep():
         batch_size = 1000
         for i in range(0, len(payload), batch_size):
             batch = payload[i:i+batch_size]
-            res = requests.post(f"{supabase_url}/rest/v1/deep_sweep_deals", headers=insert_headers, json=batch)
+            # Add on_conflict=link to the URL so PostgREST knows which constraint to ignore
+            res = requests.post(f"{supabase_url}/rest/v1/deep_sweep_deals?on_conflict=link", headers=insert_headers, json=batch)
             if res.status_code not in (200, 201):
                 print(f"Error inserting batch into Supabase: {res.text}")
         
