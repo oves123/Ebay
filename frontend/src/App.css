@@ -189,63 +189,152 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Data Table */
-.table-container {
-  width: 100%;
-  overflow-x: auto;
+/* Card Grid Layout */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.deal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 }
 
-table {
+.deal-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.06);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.deal-card-highlight {
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.1);
+}
+
+.deal-card-image {
   width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-th, td {
-  padding: 1rem;
+  height: 220px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-bottom: 1px solid var(--border-color);
 }
 
-th {
-  font-family: 'Outfit', sans-serif;
+.deal-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 1rem;
+}
+
+.deal-card-content {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.deal-card-header {
+  margin-bottom: 1rem;
+}
+
+.deal-title {
+  font-size: 1.1rem;
   font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.deal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.deal-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.price-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--success);
+  font-family: 'Outfit', sans-serif;
+}
+
+.time-value {
+  color: var(--warning);
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+.deal-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.btn-sound-on {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.btn-sound-on:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
   color: var(--text-secondary);
   background: #f8fafc;
-  white-space: nowrap;
+  border-radius: 12px;
+  border: 1px dashed var(--border-color);
 }
 
-tbody tr {
-  transition: background 0.2s ease;
-}
-
-tbody tr:hover {
-  background: #f1f5f9;
-}
-
-/* Table Cells */
-.cell-image img {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.cell-title {
-  max-width: 400px;
-  font-weight: 600;
-  font-size: 1.15rem;
-  line-height: 1.5;
-}
-
-.cell-price {
-  font-weight: 700;
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.4rem;
-  color: var(--success);
-}
-
+/* Badges */
 .badge {
   display: inline-block;
   padding: 0.35rem 0.6rem;
@@ -256,6 +345,12 @@ tbody tr:hover {
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .badge-inactive {
@@ -278,31 +373,6 @@ tbody tr:hover {
   background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;
   border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.cell-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
 }
 
 /* Loading State */
@@ -339,7 +409,7 @@ tbody tr:hover {
   animation: fadeIn 0.4s ease forwards;
 }
 
-/* Layout Utilities added for responsiveness */
+/* Layout Utilities (Controls & Filters) */
 .search-container {
   display: flex;
   gap: 1rem;
@@ -387,26 +457,29 @@ tbody tr:hover {
 }
 
 .no-img-placeholder {
-  width: 60px;
-  height: 60px;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.03);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
+/* Pagination */
 .pagination-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
   border-top: 1px solid var(--border-color);
   background-color: #f8fafc;
   flex-wrap: wrap;
   gap: 1rem;
+  margin-top: 1.5rem;
+  border-radius: 12px;
 }
 
 .pagination-info {
@@ -429,7 +502,7 @@ tbody tr:hover {
   font-weight: 500;
 }
 
-/* Responsive Design for Mobile & Tablets */
+/* Responsive Overrides */
 @media (max-width: 1024px) {
   .dashboard-container {
     padding: 1rem;
@@ -472,113 +545,71 @@ tbody tr:hover {
     padding: 1rem !important;
   }
 
+  .header-title h1 {
+    font-size: 1.5rem;
+  }
+
+  .tabs-container {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .tab-button {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.95rem;
+    padding: 0.5rem;
+  }
+
+  .action-buttons-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .action-buttons-container .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .auto-refresh-label {
+    grid-column: span 2;
+    justify-content: center;
+    background: #f8fafc;
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+  }
+
+  .filter-chips-container {
+    justify-content: center;
+  }
+
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .deal-card-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .deal-card-actions .btn {
+    width: 100%;
+  }
+
   .pagination-container {
     flex-direction: column;
     justify-content: center;
     text-align: center;
+    gap: 1rem;
   }
   
-  /* Mobile Table to Cards Transformation */
-  .table-container {
-    background: transparent;
-    border: none;
-    overflow: visible;
-  }
-  
-  table, thead, tbody, th, td, tr {
-    display: block;
-  }
-  
-  thead tr {
-    display: none; /* Hide table headers */
-  }
-  
-  tbody tr {
-    background: var(--bg-card);
-    margin-bottom: 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    padding: 1rem;
-    position: relative;
-  }
-  
-  td {
-    border: none;
-    padding: 0.5rem 0;
-    position: relative;
-    padding-left: 40%;
-    text-align: left;
-    min-height: 40px;
-  }
-  
-  /* Create mobile labels using data attributes */
-  td::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 0;
-    top: 0.5rem;
-    width: 35%;
-    padding-right: 10px;
-    white-space: nowrap;
-    font-weight: 600;
-    color: var(--text-secondary);
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.85rem;
-  }
-  
-  /* Adjust specific cells for card view */
-  .cell-image {
-    padding-left: 0 !important;
-    text-align: center !important;
-    margin-bottom: 0.5rem;
-  }
-  
-  .cell-image::before {
-    display: none;
-  }
-  
-  .cell-image img {
-    width: 100%;
-    max-width: 250px;
-    height: auto;
-    margin: 0 auto;
-  }
-  
-  .no-img-placeholder {
-    width: 100%;
-    max-width: 250px;
-    height: 150px;
-    margin: 0 auto;
-  }
-  
-  .cell-title {
-    padding-left: 0 !important;
-    text-align: left !important;
-    font-size: 1.15rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .cell-title::before {
-    display: none;
-  }
-  
-  .cell-price {
-    font-size: 1.25rem;
-  }
-  
-  .cell-actions {
-    justify-content: flex-start;
-    padding-top: 0.5rem;
-  }
-  
-  td[data-label="Actions"] {
-    border-top: 1px solid var(--border-color);
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-  }
-  
-  td[data-label="Actions"]::before {
-    display: none;
+  .card-grid {
+    grid-template-columns: 1fr;
   }
 }

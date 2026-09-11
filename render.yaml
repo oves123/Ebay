@@ -30,3 +30,37 @@ services:
         sync: false
       - key: EBAY_DEV_ID
         sync: false
+
+  # The Auto-Sweeper (Runs deep_sweep.py every 4 hours to refresh all 11,000+ items)
+  - type: cron
+    name: ebay-auto-sweeper
+    env: python
+    schedule: "0 */4 * * *" # Every 4 hours
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python deep_sweep.py"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: EBAY_ENV
+        value: "production"
+      - key: EBAY_PRD_APP_ID
+        sync: false
+      - key: EBAY_PRD_CERT_ID
+        sync: false
+      - key: EBAY_DEV_ID
+        sync: false
+
+  # The Cleanup Bot (Runs every hour to remove Sold/Ended items from the Live Sniper)
+  - type: cron
+    name: ebay-cleanup-bot
+    env: python
+    schedule: "0 * * * *" # Every hour
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python cleanup_bot.py"
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

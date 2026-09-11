@@ -26,6 +26,7 @@ function App() {
   const itemsPerPage = 100;
 
   const [isAutoPolling, setIsAutoPolling] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const [lastLatestLink, setLastLatestLink] = useState(null);
 
   useEffect(() => {
@@ -60,7 +61,9 @@ function App() {
         } else if (currentLatestLink !== lastLatestLink) {
           // A new snipe has arrived!
           setLastLatestLink(currentLatestLink);
-          playDing();
+          if (soundEnabled) {
+            playDing();
+          }
         }
       } else if (!isSilent && tab === 'live' && newData.length > 0) {
           setLastLatestLink(newData[0].Link);
@@ -79,8 +82,19 @@ function App() {
     try {
       const audio = new Audio('https://www.myinstants.com/media/sounds/ding-sound-effect_2.mp3');
       audio.volume = 0.5;
-      audio.play().catch(e => console.log('Audio play failed', e));
+      audio.play().catch(e => console.log('Audio play failed (user needs to interact first)', e));
     } catch (err) { }
+  };
+
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    if (newState) {
+      // Play a silent sound immediately on click to unlock the browser's audio context for mobile!
+      const audio = new Audio('https://www.myinstants.com/media/sounds/ding-sound-effect_2.mp3');
+      audio.volume = 0.01;
+      audio.play().catch(e => {});
+    }
   };
 
   const copyToClipboard = (text) => {
@@ -173,7 +187,7 @@ function App() {
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <span style={{ color: 'var(--text-secondary)' }}>
-            {data.length} Deals Found
+            {filteredData.length} Deals Found
           </span>
         </div>
       </header>
@@ -226,14 +240,23 @@ function App() {
           
           <div className="action-buttons-container">
             {activeTab === 'live' && (
-              <label className="auto-refresh-label">
-                <input 
-                  type="checkbox" 
-                  checked={isAutoPolling} 
-                  onChange={(e) => setIsAutoPolling(e.target.checked)}
-                />
-                Auto-Refresh
-              </label>
+              <>
+                <button 
+                  className={`btn ${soundEnabled ? 'btn-sound-on' : 'btn-outline'}`}
+                  onClick={toggleSound}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  {soundEnabled ? '🔊 Sound ON' : '🔈 Sound OFF'}
+                </button>
+                <label className="auto-refresh-label">
+                  <input 
+                    type="checkbox" 
+                    checked={isAutoPolling} 
+                    onChange={(e) => setIsAutoPolling(e.target.checked)}
+                  />
+                  Auto-Refresh
+                </label>
+              </>
             )}
             <button className="btn btn-outline" onClick={() => fetchData(activeTab)}>
               Refresh
@@ -261,92 +284,99 @@ function App() {
             <p>Scanning global markets...</p>
           </div>
         ) : (
-          <div className="table-container fade-in">
-            <table>
-              <thead>
-                <tr>
-                  <th>Image</th>
-                  <th>Title</th>
-                  <th>Format & Gender</th>
-                  <th>Price</th>
-                  <th>Listed / Time Left</th>
-                  <th>Scrap Value</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentData.length > 0 ? (
-                  currentData.map((item, index) => {
-                    const isBelowScrap = item.ScrapValue && item.ScrapValue !== 'N/A' && item.Price < parseInt(item.ScrapValue.replace('$', ''));
-                    return (
-                    <tr key={index} style={{ backgroundColor: isBelowScrap ? 'rgba(16, 185, 129, 0.05)' : '' }}>
-                      <td className="cell-image">
+          <div className="fade-in">
+            {currentData.length > 0 ? (
+              <div className="card-grid">
+                {currentData.map((item, index) => {
+                  const isBelowScrap = item.ScrapValue && item.ScrapValue !== 'N/A' && item.Price < parseInt(item.ScrapValue.replace('$', ''));
+                  return (
+                    <div className={`deal-card ${isBelowScrap ? 'deal-card-highlight' : ''}`} key={index}>
+                      <div className="deal-card-image">
                         {item.ImageUrl ? (
-                          <img src={item.ImageUrl} alt="Watch" />
+                          <img src={item.ImageUrl} alt={item.Title} />
                         ) : (
-                          <div className="no-img-placeholder">No Img</div>
+                          <div className="no-img-placeholder">No Image</div>
                         )}
-                      </td>
-                      <td className="cell-title" data-label="Title">
-                        <div style={{ marginBottom: '4px' }}>{item.Title}</div>
-                        {item.Condition && <span className="badge badge-blue" style={{ marginRight: '8px' }}>{item.Condition}</span>}
-                        {item.Health && item.Health !== 'CLEAN' && <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>{item.Health}</span>}
-                      </td>
-                      <td data-label="Format & Gender">
-                        <div style={{ fontSize: '1.05rem', marginBottom: '6px', fontWeight: '500' }}>{item.Gender}</div>
-                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{item.BuyingOptions}</div>
-                      </td>
-                      <td className="cell-price" data-label="Price">${item.Price}</td>
-                      <td data-label="Listed / Time Left">
-                        <div style={{ fontSize: '1.05rem', marginBottom: '6px', fontWeight: '500' }}>{item.TimeLeft} left</div>
-                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Listed: {item.TimeListed || 'Unknown'}</div>
-                      </td>
-                      <td data-label="Scrap Value">
-                        {item.ScrapValue !== 'N/A' ? (
-                          <span className="badge badge-gold">{item.ScrapValue}</span>
-                        ) : (
-                          <span style={{ color: 'var(--text-secondary)' }}>-</span>
-                        )}
-                      </td>
-                      <td data-label="Actions">
-                        <div className="cell-actions">
+                      </div>
+                      
+                      <div className="deal-card-content">
+                        <div className="deal-card-header">
+                          <h3 className="deal-title">{item.Title}</h3>
+                          <div className="deal-badges">
+                            {item.Condition && <span className="badge badge-blue">{item.Condition}</span>}
+                            {item.Health && item.Health !== 'CLEAN' && <span className="badge badge-danger">{item.Health.replace(/\[|\]/g, '')}</span>}
+                          </div>
+                        </div>
+                        
+                        <div className="deal-details-grid">
+                          <div className="detail-item">
+                            <span className="detail-label">Price</span>
+                            <span className="detail-value price-value">${item.Price}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Scrap Value</span>
+                            {item.ScrapValue !== 'N/A' ? (
+                              <span className="badge badge-gold">{item.ScrapValue}</span>
+                            ) : (
+                              <span className="detail-value text-muted">-</span>
+                            )}
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Time Left</span>
+                            <span className="detail-value time-value">{item.TimeLeft}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Listed</span>
+                            <span className="detail-value">{item.TimeListed || 'Unknown'}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Gender</span>
+                            <span className="detail-value">{item.Gender}</span>
+                          </div>
+                          <div className="detail-item">
+                            <span className="detail-label">Format</span>
+                            <span className="detail-value">{item.BuyingOptions}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="deal-card-actions">
                           <button 
-                            className="action-btn" 
+                            className="btn btn-outline" 
                             title="Hide this item"
                             onClick={() => hideItem(item.Link)}
-                            style={{ color: 'var(--danger)' }}
+                            style={{ flex: 1, color: 'var(--danger)', borderColor: 'var(--border-color)' }}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={16} /> Hide
                           </button>
                           <button 
-                            className="action-btn" 
+                            className="btn btn-outline" 
                             title="Copy Link"
                             onClick={() => copyToClipboard(item.Link)}
+                            style={{ flex: 1 }}
                           >
-                            <Copy size={16} />
+                            <Copy size={16} /> Copy
                           </button>
                           <a 
                             href={item.Link} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="action-btn"
+                            className="btn"
                             title="Open in eBay"
+                            style={{ flex: 2, justifyContent: 'center' }}
                           >
-                            <ExternalLink size={16} />
+                            <ExternalLink size={16} /> Open eBay
                           </a>
                         </div>
-                      </td>
-                    </tr>
-                  )})
-                ) : (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                      No deals found. Try a different search.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <p>No deals found. Try adjusting your filters or search.</p>
+              </div>
+            )}
             
             {/* Pagination Controls */}
             {totalPages > 1 && (
