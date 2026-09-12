@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Download, ExternalLink, Copy, CheckCircle2, Clock, Activity, Trash2 } from 'lucide-react';
 import './App.css';
 
@@ -27,7 +27,8 @@ function App() {
 
   const [isAutoPolling, setIsAutoPolling] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [lastLatestLink, setLastLatestLink] = useState(null);
+  const soundEnabledRef = useRef(false);
+  const lastLatestLinkRef = useRef(null);
 
   useEffect(() => {
     fetchData(activeTab);
@@ -56,17 +57,17 @@ function App() {
         const currentLatestLink = newData[0].Link;
         
         // If this is the first silent load, just set the link
-        if (!lastLatestLink) {
-          setLastLatestLink(currentLatestLink);
-        } else if (currentLatestLink !== lastLatestLink) {
+        if (!lastLatestLinkRef.current) {
+          lastLatestLinkRef.current = currentLatestLink;
+        } else if (currentLatestLink !== lastLatestLinkRef.current) {
           // A new snipe has arrived!
-          setLastLatestLink(currentLatestLink);
-          if (soundEnabled) {
+          lastLatestLinkRef.current = currentLatestLink;
+          if (soundEnabledRef.current) {
             playDing();
           }
         }
       } else if (!isSilent && tab === 'live' && newData.length > 0) {
-          setLastLatestLink(newData[0].Link);
+          lastLatestLinkRef.current = newData[0].Link;
       }
       
       setData(newData);
@@ -89,6 +90,7 @@ function App() {
   const toggleSound = () => {
     const newState = !soundEnabled;
     setSoundEnabled(newState);
+    soundEnabledRef.current = newState;
     if (newState) {
       // Play a silent sound immediately on click to unlock the browser's audio context for mobile!
       const audio = new Audio('https://www.myinstants.com/media/sounds/ding-sound-effect_2.mp3');

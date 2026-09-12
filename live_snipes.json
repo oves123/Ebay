@@ -1,5 +1,23 @@
 [
     {
+        "Query": "Vintage watch",
+        "Region": "EBAY_US",
+        "Title": "RARE VINTAGE SEIKO 5 AUTOMATIC 7009A JAPAN MENS WHITE COLOR DIAL WATCH a3118-A",
+        "Price": 128,
+        "TimeLeft": "New Listing",
+        "TimeListed": "9m ago",
+        "Gender": "Mens",
+        "BuyingOptions": "Buy It Now, Bidding",
+        "Condition": "Pre-owned - Good",
+        "Health": "[\u26aa UNKNOWN STATUS]",
+        "ScrapValue": "N/A",
+        "Contacts": "None",
+        "Seller": "km_holdings",
+        "Link": "https://www.ebay.com/itm/227518058501?_skw=Vintage+watch&hash=item34f9221005:g:Z0sAAeSwXm5qgyQ~",
+        "ImageUrl": "https://i.ebayimg.com/images/g/Z0sAAeSwXm5qgyQ~/s-l225.jpg",
+        "Timestamp": "14:15:40"
+    },
+    {
         "Query": "Seiko",
         "Region": "EBAY_US",
         "Title": "VINTAGE SEIKO 5 AUTOMATIC 7009A JAPAN MENS ORIGINAL DIAL WATCH a3151-A",
@@ -880,23 +898,5 @@
         "Link": "https://www.ebay.com/itm/168675288374?_skw=Vintage+watch&hash=item2745d4a536:g:Sf4AAeSwy-xqoQ2J",
         "ImageUrl": "https://i.ebayimg.com/images/g/Sf4AAeSwy-xqoQ2J/s-l225.jpg",
         "Timestamp": "13:22:45"
-    },
-    {
-        "Query": "Vintage watch",
-        "Region": "EBAY_US",
-        "Title": "VINTAGE SEIKO EXPO 70 AUTOMATIC 7009A JAPAN MENS BLACK COLOR DIAL WATCH a2609-A",
-        "Price": 122,
-        "TimeLeft": "New Listing",
-        "TimeListed": "4m ago",
-        "Gender": "Mens",
-        "BuyingOptions": "Buy It Now, Bidding",
-        "Condition": "Pre-owned - Good",
-        "Health": "[\u26aa UNKNOWN STATUS]",
-        "ScrapValue": "N/A",
-        "Contacts": "None",
-        "Seller": "km_holdings",
-        "Link": "https://www.ebay.com/itm/227513393422?_skw=Vintage+watch&hash=item34f8dae10e:g:P9IAAeSwmBpqnsiJ",
-        "ImageUrl": "https://i.ebayimg.com/images/g/P9IAAeSwmBpqnsiJ/s-l225.jpg",
-        "Timestamp": "13:22:44"
     }
 ]
