@@ -4,6 +4,9 @@ import './App.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
+// Create a single global audio instance to bypass mobile autoplay restrictions
+const dingAudio = new Audio('https://www.myinstants.com/media/sounds/ding-sound-effect_2.mp3');
+
 function App() {
   const [activeTab, setActiveTab] = useState('live'); // 'live' or 'sweep'
   const [data, setData] = useState([]);
@@ -81,9 +84,9 @@ function App() {
 
   const playDing = () => {
     try {
-      const audio = new Audio('https://www.myinstants.com/media/sounds/ding-sound-effect_2.mp3');
-      audio.volume = 0.5;
-      audio.play().catch(e => console.log('Audio play failed (user needs to interact first)', e));
+      dingAudio.volume = 0.5;
+      dingAudio.currentTime = 0; // Reset to start in case it's playing
+      dingAudio.play().catch(e => console.log('Audio play failed', e));
     } catch (err) { }
   };
 
@@ -93,9 +96,9 @@ function App() {
     soundEnabledRef.current = newState;
     if (newState) {
       // Play a silent sound immediately on click to unlock the browser's audio context for mobile!
-      const audio = new Audio('https://www.myinstants.com/media/sounds/ding-sound-effect_2.mp3');
-      audio.volume = 0.01;
-      audio.play().catch(e => {});
+      dingAudio.volume = 0.01;
+      dingAudio.currentTime = 0;
+      dingAudio.play().catch(e => {});
     }
   };
 
@@ -145,7 +148,10 @@ function App() {
     localStorage.setItem('hiddenEbayItems', JSON.stringify(newHidden));
   };
 
-  const filteredData = data.filter(item => {
+  // Remove duplicates based on the Link URL
+  const uniqueData = Array.from(new Map(data.map(item => [item.Link, item])).values());
+
+  const filteredData = uniqueData.filter(item => {
     // Hidden Items
     if (hiddenItems.includes(item.Link)) return false;
 
