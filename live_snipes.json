@@ -1,5 +1,23 @@
 [
     {
+        "Query": "Seiko",
+        "Region": "EBAY_US",
+        "Title": "VINTAGE SEIKO AUTOMATIC 7019A JAPAN MENS DONALD DIAL WATCH a3122-A",
+        "Price": 107,
+        "TimeLeft": "New Listing",
+        "TimeListed": "6m ago",
+        "Gender": "Mens",
+        "BuyingOptions": "Buy It Now, Bidding",
+        "Condition": "Pre-owned - Good",
+        "Health": "[\u26aa UNKNOWN STATUS]",
+        "ScrapValue": "N/A",
+        "Contacts": "None",
+        "Seller": "km_holdings",
+        "Link": "https://www.ebay.com/itm/227518066964?_skw=Seiko&hash=item34f9223114:g:OpAAAeSw2C9qorT7",
+        "ImageUrl": "https://i.ebayimg.com/images/g/OpAAAeSw2C9qorT7/s-l225.jpg",
+        "Timestamp": "14:24:47"
+    },
+    {
         "Query": "Vintage watch",
         "Region": "EBAY_US",
         "Title": "RARE VINTAGE SEIKO 5 AUTOMATIC 7009A JAPAN MENS WHITE COLOR DIAL WATCH a3118-A",
@@ -880,23 +898,5 @@
         "Link": "https://www.ebay.com/itm/168675349810?_skw=Seiko&hash=item2745d59532:g:hsMAAeSwVzJqoRRe",
         "ImageUrl": "https://i.ebayimg.com/images/g/hsMAAeSwVzJqoRRe/s-l225.jpg",
         "Timestamp": "13:48:11"
-    },
-    {
-        "Query": "Vintage watch",
-        "Region": "EBAY_US",
-        "Title": "Vintage Seiko Automatic Date Day Dial Wrist Watch  SP730",
-        "Price": 99,
-        "TimeLeft": "New Listing",
-        "TimeListed": "10m ago",
-        "Gender": "Unisex",
-        "BuyingOptions": "Buy It Now",
-        "Condition": "Seller refurbished",
-        "Health": "[\u26aa UNKNOWN STATUS]",
-        "ScrapValue": "N/A",
-        "Contacts": "None",
-        "Seller": "findsin-54",
-        "Link": "https://www.ebay.com/itm/168675288374?_skw=Vintage+watch&hash=item2745d4a536:g:Sf4AAeSwy-xqoQ2J",
-        "ImageUrl": "https://i.ebayimg.com/images/g/Sf4AAeSwy-xqoQ2J/s-l225.jpg",
-        "Timestamp": "13:22:45"
     }
 ]

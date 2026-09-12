@@ -390,7 +390,10 @@ function App() {
                   <button 
                     className="btn btn-outline" 
                     disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => {
+                      setCurrentPage(p => Math.max(1, p - 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                   >
                     Previous
                   </button>
@@ -398,7 +401,10 @@ function App() {
                   <button 
                     className="btn btn-outline" 
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => {
+                      setCurrentPage(p => Math.min(totalPages, p + 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                   >
                     Next
                   </button>
