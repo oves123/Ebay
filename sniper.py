@@ -487,7 +487,7 @@ def start_sniper_bot():
                                 "image_url": image_url
                             }
                             
-                            res = requests.post(f"{supabase_url}/rest/v1/live_snipes", headers=headers, json=payload, timeout=10)
+                            res = requests.post(f"{supabase_url}/rest/v1/live_snipes?on_conflict=link", headers=headers, json=payload, timeout=10)
                             if res.status_code not in (200, 201):
                                 print(f"\033[91mCloud Sync Error: {res.text}\033[0m")
                                 
