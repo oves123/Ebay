@@ -169,6 +169,11 @@ GENERIC_VALIDATORS = ["watch", "vintage", "mens", "womens", "ladies", "lot", "es
 
 VALID_MODELS = {
     "rolex": ["oyster", "datejust", "day-date", "air-king", "explorer", "submariner", "gmt-master", "daytona", "milgauss", "sea-dweller", "oysterquartz", "precision", "cellini", "bubbleback"],
+    "patek philippe": ["calatrava", "nautilus", "aquanaut", "gondolo", "ellipse", "golden ellipse", "complications"],
+    "patek": ["calatrava", "nautilus", "aquanaut", "gondolo", "ellipse", "golden ellipse", "complications"],
+    "audemars piguet": ["royal oak", "millenary", "jules", "code 11.59", "offshore"],
+    "audemars": ["royal oak", "millenary", "jules", "code 11.59", "offshore"],
+    "vacheron": ["overseas", "patrimony", "traditionnelle", "historiques", "fiftysix", "malte"],
     "omega": ["speedmaster", "seamaster", "constellation", "genève", "geneve", "de ville", "dynamic", "railmaster", "ranchero", "flightmaster", "chronostop", "memomatic", "cosmic"],
     "cartier": ["tank", "américaine", "française", "must de cartier", "santos", "panthère", "baignoire", "crash", "tortue", "cintrée"],
     "jaeger-lecoultre": ["reverso", "memovox", "geophysic", "futurematic", "atmos", "master", "polaris", "duoplan", "powermatic", "perpetual"],
@@ -199,6 +204,7 @@ def is_model_locked(full_text, brand):
 # V6: OFF-MARKET SCANNER & SCRAP VALUE ENGINE
 # -------------------------------------------------------------------------
 def get_gold_scrap_value(full_text):
+    if re.search(r'\b(plated|filled|gf|electroplated|gep|gp|rgp|rolled)\b', full_text): return 0
     if re.search(r'\b18k\b', full_text): return 720
     elif re.search(r'\b14k\b', full_text): return 552
     elif re.search(r'\b(?:10k|9k)\b', full_text): return 384
@@ -286,18 +292,7 @@ def start_sniper_bot():
     
     client = EbayBrowseClient(load_config())
     
-    print("Pre-seeding historical data...")
-    for query, market in TARGETS:
-        try:
-            cat_id = None if "lot" in query.lower() else "31387"
-            data = client.search(query, limit=10, sort="newlyListed", filter="itemLocationCountry:US", category_ids=cat_id, marketplace=market)
-            for item in data.get("itemSummaries", []):
-                seen_items.add(item.get("itemId"))
-            time.sleep(1)
-        except Exception as e:
-            pass
-    
-    print(f"Seeded {len(seen_items)} historical items. Live monitoring started!\n")
+    print("Live monitoring started! Scanning directly for unmissed deals...\n")
     
     while True:
         for query, market in TARGETS:
@@ -331,12 +326,15 @@ def start_sniper_bot():
                         
                     # 2. Modern Ladies Filter
                     if any(re.search(r'\b' + re.escape(l) + r'\b', full_text) for l in LADIES_KEYWORDS):
-                        if not re.search(r'\bvintage\b', full_text) and not any(re.search(r'\b' + brand + r'\b', full_text) for brand in ["rolex", "omega", "cartier", "tudor"]):
+                        luxury_brands = ["rolex", "omega", "cartier", "tudor", "patek", "audemars", "jaeger-lecoultre", "jlc", "iwc", "breitling", "zenith", "breguet", "vacheron"]
+                        if not re.search(r'\bvintage\b', full_text) and not any(re.search(r'\b' + brand + r'\b', full_text) for brand in luxury_brands):
                             continue
                             
                     # 3. Model Lock
-                    query_brand = query.split()[0].lower()
-                    if not is_model_locked(full_text, query_brand):
+                    query_brand_lower = query.lower()
+                    matched_brand = next((b for b in VALID_MODELS.keys() if b in query_brand_lower), query_brand_lower.split()[0])
+                    
+                    if not is_model_locked(full_text, matched_brand):
                         continue
                     
                     # 4. Currency Conversion & Global Price Limit
@@ -484,7 +482,7 @@ def start_sniper_bot():
                                 "image_url": image_url
                             }
                             
-                            res = requests.post(f"{supabase_url}/rest/v1/live_snipes", headers=headers, json=payload)
+                            res = requests.post(f"{supabase_url}/rest/v1/live_snipes", headers=headers, json=payload, timeout=10)
                             if res.status_code not in (200, 201):
                                 print(f"\033[91mCloud Sync Error: {res.text}\033[0m")
                                 

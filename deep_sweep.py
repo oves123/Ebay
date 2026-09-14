@@ -199,6 +199,7 @@ def is_model_locked(full_text, brand):
 # V6: OFF-MARKET SCANNER & SCRAP VALUE ENGINE
 # -------------------------------------------------------------------------
 def get_gold_scrap_value(full_text):
+    if re.search(r'\b(plated|filled|gf|electroplated|gep|gp|rgp|rolled)\b', full_text): return 0
     if re.search(r'\b18k\b', full_text): return 720
     elif re.search(r'\b14k\b', full_text): return 552
     elif re.search(r'\b(?:10k|9k)\b', full_text): return 384
@@ -323,13 +324,16 @@ def fetch_market_data(client, query, price_limit, market):
                         
                     # 2. Modern Ladies Filter
                     if any(re.search(r'\b' + re.escape(l) + r'\b', full_text) for l in LADIES_KEYWORDS):
-                        if not re.search(r'\bvintage\b', full_text) and not any(re.search(r'\b' + brand + r'\b', full_text) for brand in ["rolex", "omega", "cartier", "tudor"]):
+                        luxury_brands = ["rolex", "omega", "cartier", "tudor", "patek", "audemars", "jaeger-lecoultre", "jlc", "iwc", "breitling", "zenith", "breguet", "vacheron"]
+                        if not re.search(r'\bvintage\b', full_text) and not any(re.search(r'\b' + brand + r'\b', full_text) for brand in luxury_brands):
                             continue
                             
                     # 3. Model Lock
-                    query_brand = query.split()[0].lower()
-                    if query_brand in VALID_MODELS:
-                        if not is_model_locked(full_text, query_brand):
+                    query_brand_lower = query.lower()
+                    matched_brand = next((b for b in VALID_MODELS.keys() if b in query_brand_lower), query_brand_lower.split()[0])
+                    
+                    if matched_brand in VALID_MODELS:
+                        if not is_model_locked(full_text, matched_brand):
                             continue
                             
                     # Extract V6 Data
@@ -450,7 +454,7 @@ def run_deep_sweep():
         while True:
             del_headers = headers.copy()
             del_headers["Prefer"] = "return=representation"
-            res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=del_headers)
+            res_del = requests.delete(f"{supabase_url}/rest/v1/deep_sweep_deals?id=gt.0", headers=del_headers, timeout=15)
             if res_del.status_code not in (200, 204): break
             try:
                 if len(res_del.json()) < 1000: break
@@ -487,7 +491,7 @@ def run_deep_sweep():
         for i in range(0, len(payload), batch_size):
             batch = payload[i:i+batch_size]
             # Add on_conflict=link to the URL so PostgREST knows which constraint to ignore
-            res = requests.post(f"{supabase_url}/rest/v1/deep_sweep_deals?on_conflict=link", headers=insert_headers, json=batch)
+            res = requests.post(f"{supabase_url}/rest/v1/deep_sweep_deals?on_conflict=link", headers=insert_headers, json=batch, timeout=20)
             if res.status_code not in (200, 201):
                 print(f"Error inserting batch into Supabase: {res.text}")
         
