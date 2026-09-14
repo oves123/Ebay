@@ -297,8 +297,13 @@ def start_sniper_bot():
     while True:
         for query, market in TARGETS:
             try:
+                # Prevent Memory Leak: Cap seen_items at 50,000
+                if len(seen_items) > 50000:
+                    seen_items.clear()
+                    
                 cat_id = None if "lot" in query.lower() else "31387"
-                data = client.search(query, limit=10, sort="newlyListed", filter="itemLocationCountry:US", category_ids=cat_id, marketplace=market)
+                # Changed limit=10 to limit=100 to catch everything in the 15 min gap!
+                data = client.search(query, limit=100, sort="newlyListed", filter="itemLocationCountry:US", category_ids=cat_id, marketplace=market)
                 
                 for item in data.get("itemSummaries", []):
                     item_id = item.get("itemId")
