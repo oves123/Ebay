@@ -112,7 +112,7 @@ def get_live_snipes():
         
     try:
         url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
-        res = requests.get(f"{url}/rest/v1/live_snipes?select=*&order=id.desc&limit=50", headers=get_headers())
+        res = requests.get(f"{url}/rest/v1/live_snipes?select=*&order=id.desc", headers=get_headers())
         if res.status_code == 200:
             data = res.json()
             mapped_data = []

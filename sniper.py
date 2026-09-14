@@ -453,7 +453,7 @@ def start_sniper_bot():
                             "Timestamp": timestamp
                         }
                         snipes.insert(0, snipe_data)
-                        snipes = snipes[:50]
+                        snipes = snipes[:1000]
                         with open(json_file, "w", encoding="utf-8") as f:
                             json.dump(snipes, f, indent=4)
                             
