@@ -153,6 +153,7 @@ EXCLUDE_KEYWORDS = [
 ]
 
 GOLD_KEYWORDS = ["14k", "18k", "solid gold", "9k", "10k"]
+HIGH_VALUE_DIALS = ["tropical", "salmon", "tiffany", "meteorite", "linen dial", "bullseye", "sector dial"]
 RUNNING_KEYWORDS = ["running", "working", "keeps time", "runs"]
 BROKEN_KEYWORDS = ["untested", "not running", "for parts", "repair", "not working", "needs battery", "project", "spares", "fixer upper", "needs service", "needs tlc", "restoration"]
 LADIES_KEYWORDS = ["ladies", "womens", "women"]
@@ -350,6 +351,13 @@ def fetch_market_data(client, query, price_limit, market):
                     excel_hyperlink = f'=HYPERLINK("{raw_url}", "Open eBay")' if raw_url else ""
                     
                     image_url = item.get("image", {}).get("imageUrl", "")
+                    
+                    is_gold_jackpot = any(gold in full_text for gold in GOLD_KEYWORDS)
+                    is_rare_dial = any(dial in full_text for dial in HIGH_VALUE_DIALS)
+                    if is_gold_jackpot:
+                        title = f"[🚨 SOLID GOLD] {title}"
+                    if is_rare_dial:
+                        title = f"[🎨 RARE DIAL] {title}"
                     
                     valid_items.append({
                         "Query": query,
