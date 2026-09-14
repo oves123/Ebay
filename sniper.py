@@ -159,6 +159,7 @@ EXCLUDE_KEYWORDS = [
 
 GOLD_KEYWORDS = ["14k", "18k", "solid gold", "9k", "10k"]
 HIGH_VALUE_DIALS = ["tropical", "salmon", "tiffany", "meteorite", "linen dial", "bullseye", "sector dial"]
+FULL_SET_KEYWORDS = ["with original box", "box and papers", "b&p", "full kit", "complete set", "original papers"]
 RUNNING_KEYWORDS = ["running", "working", "keeps time", "runs"]
 BROKEN_KEYWORDS = ["untested", "not running", "for parts", "repair", "not working", "needs battery", "project", "spares", "fixer upper", "needs service", "needs tlc", "restoration"]
 LADIES_KEYWORDS = ["ladies", "womens", "women"]
@@ -280,6 +281,13 @@ def check_seller_safety(seller):
         return f"\033[93m [LOW FEEDBACK: {score}] \033[0m"
     return f" (Feedback: {score})"
 
+def get_smart_delay():
+    # Peak Hours: US Evening (00:00 - 04:00 UTC) and Tokyo Evening (09:00 - 13:00 UTC)
+    current_hour = datetime.now(timezone.utc).hour
+    if 9 <= current_hour <= 13 or 0 <= current_hour <= 4:
+        return 5 # Overdrive
+    return 30 # Economy Mode
+
 # -------------------------------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------------------------------
@@ -369,7 +377,14 @@ def start_sniper_bot():
                         continue
                         
                     # 5. THE STRICT VALIDATION (Model Lock & Generic Lock)
-                    if triggered_brand:
+                    is_lot_query = any(q in query.lower() for q in ["lot", "estate", "drawer"])
+                    
+                    if is_lot_query:
+                        luxury_brands = ["rolex", "omega", "patek", "audemars", "tudor", "cartier", "breitling", "zenith", "vacheron", "breguet", "iwc", "jaeger-lecoultre", "heuer"]
+                        found_lux = [b for b in luxury_brands if re.search(r'\b' + b + r'\b', full_text)]
+                        if found_lux:
+                            title = f"[💎 HIDDEN GEM: {found_lux[0].upper()}] {title}"
+                    elif triggered_brand:
                         if not is_model_locked(full_text, triggered_brand):
                             continue # Throw away accessories that passed the nuke
                     else:
@@ -385,14 +400,17 @@ def start_sniper_bot():
                     safety_str = check_seller_safety(seller)
                     health_str = check_health(full_text)
                     
-                    # Gold & Rare Dial Checks
+                    # Gold & Rare Dial & Full Set Checks
                     is_gold_jackpot = any(gold in full_text for gold in GOLD_KEYWORDS)
                     is_rare_dial = any(dial in full_text for dial in HIGH_VALUE_DIALS)
+                    is_full_set = any(bp in full_text for bp in FULL_SET_KEYWORDS)
                     
                     if is_gold_jackpot:
                         title = f"[🚨 SOLID GOLD] {title}"
                     if is_rare_dial:
                         title = f"[🎨 RARE DIAL] {title}"
+                    if is_full_set:
+                        title = f"[🏆 FULL SET B&P] {title}"
                     
                     # V6 Engines
                     scrap_value = get_gold_scrap_value(full_text)
@@ -504,7 +522,7 @@ def start_sniper_bot():
             except Exception as e:
                 print(f"API Error on {query} ({market}): {e}")
                 
-            time.sleep(POLL_DELAY_SECONDS)
+            time.sleep(get_smart_delay())
 
 if __name__ == "__main__":
     try:
