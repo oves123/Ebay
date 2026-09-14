@@ -112,32 +112,59 @@ def get_live_snipes():
         
     try:
         url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
-        res = requests.get(f"{url}/rest/v1/live_snipes?select=*&order=id.desc", headers=get_headers())
-        if res.status_code == 200:
-            data = res.json()
-            mapped_data = []
-            for item in data:
-                mapped_data.append({
-                    "Query": item.get("query"),
-                    "Region": item.get("region"),
-                    "Title": item.get("title"),
-                    "Price": item.get("price"),
-                    "TimeLeft": item.get("time_left"),
-                    "TimeListed": item.get("time_listed"),
-                    "Gender": item.get("gender"),
-                    "BuyingOptions": item.get("buying_options"),
-                    "Condition": item.get("condition"),
-                    "Health": item.get("health"),
-                    "ScrapValue": item.get("scrap_value"),
-                    "Contacts": item.get("contacts"),
-                    "Seller": item.get("seller"),
-                    "Link": item.get("link"),
-                    "ExcelLink": item.get("excel_link"),
-                    "ImageUrl": item.get("image_url")
-                })
-            return {"data": mapped_data, "count": len(mapped_data)}
-        else:
-            return {"error": f"Supabase error: {res.text}"}
+        
+        mapped_data = []
+        limit = 1000
+        headers = get_headers()
+        
+        # First, fetch one row with exact count to know how many we need
+        count_headers = headers.copy()
+        count_headers["Prefer"] = "count=exact"
+        count_req = requests.head(f"{url}/rest/v1/live_snipes", headers=count_headers)
+        
+        range_header = count_req.headers.get("Content-Range", "0-0/0")
+        try:
+            total_count = int(range_header.split("/")[-1])
+        except ValueError:
+            total_count = 0
+            
+        if total_count == 0:
+            return {"data": [], "count": 0}
+            
+        def fetch_chunk(offset):
+            res = requests.get(f"{url}/rest/v1/live_snipes?select=*&order=id.desc&limit={limit}&offset={offset}", headers=headers)
+            if res.status_code == 200:
+                return res.json()
+            return []
+
+        offsets = list(range(0, total_count, limit))
+        all_raw_data = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            results = executor.map(fetch_chunk, offsets)
+            for chunk in results:
+                all_raw_data.extend(chunk)
+                
+        for item in all_raw_data:
+            mapped_data.append({
+                "Query": item.get("query"),
+                "Region": item.get("region"),
+                "Title": item.get("title"),
+                "Price": item.get("price"),
+                "TimeLeft": item.get("time_left"),
+                "TimeListed": item.get("time_listed"),
+                "Gender": item.get("gender"),
+                "BuyingOptions": item.get("buying_options"),
+                "Condition": item.get("condition"),
+                "Health": item.get("health"),
+                "ScrapValue": item.get("scrap_value"),
+                "Contacts": item.get("contacts"),
+                "Seller": item.get("seller"),
+                "Link": item.get("link"),
+                "ExcelLink": item.get("excel_link"),
+                "ImageUrl": item.get("image_url")
+            })
+            
+        return {"data": mapped_data, "count": len(mapped_data)}
     except Exception as e:
         return {"error": str(e)}
 
