@@ -1,11 +1,11 @@
 services:
 
-  # The 24/7 Python Sniper Bot (Hunts for deals autonomously)
-  - type: worker
+  # The 24/7 Python Sniper Bot (Free Tier Hack)
+  - type: web
     name: ebay-sniper-bot
     env: python
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python sniper.py"
+    startCommand: "python free_server.py"
     envVars:
       - key: SUPABASE_URL
         sync: false
