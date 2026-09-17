@@ -10,6 +10,9 @@ import re
 
 from ebay_mcp.browse import EbayBrowseClient
 from ebay_mcp.config import load_config
+from dotenv import load_dotenv
+
+load_dotenv("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env")
 
 # -------------------------------------------------------------------------
 # CONFIGURATION V4 - GLOBAL ARBITRAGE & ESTATE HUNTER
@@ -430,7 +433,7 @@ def start_sniper_bot():
                         print(f"\n\033[92m[{timestamp}] SNIPE ALERT: {query.upper()} {market_str}\033[0m")
                         
                     print(f"Title: {title} {health_str}")
-                    print(f"Price: {raw_price} {currency} (~${int(price_usd)} USD) {options_str}")
+                    print(f"Price: {raw_price} {currency} (~${int(price_usd)} USD) {options_str} | Listed: {time_listed} | Found: {timestamp}")
                     
                     if scrap_value > 0:
                         print(f"\033[93m=> EST. SCRAP VALUE: ${scrap_value} USD (GUARANTEED FLOOR)\033[0m")
@@ -485,7 +488,9 @@ def start_sniper_bot():
                         # PUSH TO SUPABASE CLOUD (UPSERT)
                         supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
                         supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
+                        print(f"DEBUG: SUPABASE_URL loaded: {bool(supabase_url)}")
                         if supabase_url and supabase_key:
+                            print("DEBUG: Pushing to Supabase...")
                             headers = {
                                 "apikey": supabase_key,
                                 "Authorization": f"Bearer {supabase_key}",
