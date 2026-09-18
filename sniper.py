@@ -11,8 +11,25 @@ import re
 from ebay_mcp.browse import EbayBrowseClient
 from ebay_mcp.config import load_config
 from dotenv import load_dotenv
+import uvicorn
+from fastapi import FastAPI
 
-load_dotenv("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env")
+# Fallback for local vs cloud
+if os.path.exists("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env"):
+    load_dotenv("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env")
+else:
+    load_dotenv()
+
+# --- Cloud Web Server (For Render) ---
+app = FastAPI()
+
+@app.get("/")
+def health_check():
+    return {"status": "Sniper Bot is alive and hunting!"}
+
+def run_server():
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 # -------------------------------------------------------------------------
 # CONFIGURATION V4 - GLOBAL ARBITRAGE & ESTATE HUNTER
@@ -304,6 +321,23 @@ def start_sniper_bot():
     
     client = EbayBrowseClient(load_config())
     
+    # Load previously seen items from local JSONs to prevent duplicates on restart
+    json_files = [
+        "C:\\Users\\Oves\\Desktop\\Ebay\\live_snipes.json",
+        "C:\\Users\\Oves\\Desktop\\Ebay\\deep_sweep_results.json"
+    ] if os.name == 'nt' else ["live_snipes.json", "deep_sweep_results.json"]
+
+    for json_file in json_files:
+        if os.path.exists(json_file):
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    for s in json.load(f):
+                        if "Link" in s:
+                            seen_items.add(s["Link"])
+            except Exception as e:
+                print(f"Error loading {json_file}: {e}")
+
+    print(f"Loaded {len(seen_items)} previously seen deals from local backups.")
     print("Live monitoring started! Scanning directly for unmissed deals...\n")
     
     while True:
@@ -318,11 +352,11 @@ def start_sniper_bot():
                 data = client.search(query, limit=100, sort="newlyListed", filter="itemLocationCountry:US", category_ids=cat_id, marketplace=market)
                 
                 for item in data.get("itemSummaries", []):
-                    item_id = item.get("itemId")
-                    if not item_id or item_id in seen_items:
+                    url = item.get("itemWebUrl", "")
+                    if not url or url in seen_items:
                         continue
                     
-                    seen_items.add(item_id)
+                    seen_items.add(url)
                     
                     title = item.get("title", "Unknown Title")
                     short_desc = item.get("shortDescription", "")
@@ -446,14 +480,16 @@ def start_sniper_bot():
                     
                     # Write to Overnight Log File
                     try:
-                        with open("C:\\Users\\Oves\\Desktop\\snipe_history.txt", "a", encoding="utf-8") as f:
+                        # Use local directory if running on cloud
+                        log_path = "C:\\Users\\Oves\\Desktop\\snipe_history.txt" if os.name == 'nt' else "snipe_history.txt"
+                        with open(log_path, "a", encoding="utf-8") as f:
                             f.write(f"[{timestamp}] {market} | {title} | ~${int(price_usd)} USD | {url}\n")
                     except Exception:
                         pass
                         
                     # Write to Live JSON Feed for Dashboard (Legacy Backup)
                     try:
-                        json_file = "C:\\Users\\Oves\\Desktop\\Ebay\\live_snipes.json"
+                        json_file = "C:\\Users\\Oves\\Desktop\\Ebay\\live_snipes.json" if os.name == 'nt' else "live_snipes.json"
                         snipes = []
                         if os.path.exists(json_file):
                             try:
@@ -530,6 +566,10 @@ def start_sniper_bot():
             time.sleep(get_smart_delay())
 
 if __name__ == "__main__":
+    # Start web server in background thread so Render keeps this script alive
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    
     try:
         start_sniper_bot()
     except KeyboardInterrupt:
