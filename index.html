@@ -382,7 +382,30 @@
         
         <!-- NEW FILTER BAR -->
         <div class="filter-bar">
-            <input type="text" id="filter-search" placeholder="🔍 Search Title or Brand..." onkeyup="handleSearch(event)">
+            <input type="text" id="filter-search" placeholder="🔍 Search Titles / Models..." onkeyup="handleSearch(event)">
+            
+            <select id="filter-brand" onchange="applyFilters()">
+                <option value="">All Brands</option>
+                <option value="Rolex">Rolex</option>
+                <option value="Omega">Omega</option>
+                <option value="Seiko">Seiko</option>
+                <option value="Tudor">Tudor</option>
+                <option value="Cartier">Cartier</option>
+                <option value="Patek">Patek Philippe</option>
+                <option value="Audemars">Audemars Piguet</option>
+                <option value="IWC">IWC</option>
+                <option value="Breitling">Breitling</option>
+                <option value="Longines">Longines</option>
+                <option value="Universal Geneve">Universal Geneve</option>
+            </select>
+
+            <select id="filter-gender" onchange="applyFilters()">
+                <option value="">All Genders</option>
+                <option value="Mens">Mens</option>
+                <option value="Womens">Womens</option>
+                <option value="Unisex">Unisex</option>
+            </select>
+
             <select id="filter-condition" onchange="applyFilters()">
                 <option value="">All Conditions</option>
                 <option value="Pre-owned">Pre-owned</option>
@@ -425,6 +448,8 @@
         let filterSearch = "";
         let filterCondition = "";
         let filterHealth = "";
+        let filterGender = "";
+        let filterBrand = "";
 
         // Initial setup
         document.getElementById('auto-refresh').addEventListener('change', (e) => {
@@ -442,6 +467,8 @@
             filterSearch = document.getElementById('filter-search').value.trim();
             filterCondition = document.getElementById('filter-condition').value;
             filterHealth = document.getElementById('filter-health').value;
+            filterGender = document.getElementById('filter-gender').value;
+            filterBrand = document.getElementById('filter-brand').value;
             fetchData(); // Reset and fetch with filters
         }
         
@@ -449,6 +476,8 @@
             document.getElementById('filter-search').value = '';
             document.getElementById('filter-condition').value = '';
             document.getElementById('filter-health').value = '';
+            document.getElementById('filter-gender').value = '';
+            document.getElementById('filter-brand').value = '';
             applyFilters();
         }
 
@@ -513,11 +542,17 @@
             if (filterSearch) {
                 url += `&title=ilike.*${encodeURIComponent(filterSearch)}*`;
             }
+            if (filterBrand) {
+                url += `&title=ilike.*${encodeURIComponent(filterBrand)}*`;
+            }
             if (filterCondition) {
                 url += `&condition=ilike.*${encodeURIComponent(filterCondition)}*`;
             }
             if (filterHealth) {
                 url += `&health=ilike.*${encodeURIComponent(filterHealth)}*`;
+            }
+            if (filterGender) {
+                url += `&gender=ilike.*${encodeURIComponent(filterGender)}*`;
             }
             
             return url;
@@ -559,7 +594,7 @@
                 // Get exact count initially or on full refresh
                 if (!isSilent || totalCount === 0) {
                     totalCount = await fetchTotalCount();
-                    let filterMsg = (filterSearch || filterCondition || filterHealth) ? " (Filtered)" : "";
+                    let filterMsg = (filterSearch || filterCondition || filterHealth || filterGender || filterBrand) ? " (Filtered)" : "";
                     document.getElementById('status').innerText = `${totalCount.toLocaleString()} Deals${filterMsg}`;
                 }
                 
@@ -574,7 +609,7 @@
                 
                 if (!isLoadMore && data.length > 0) {
                     const currentLatestLink = data[0].link;
-                    if (activeTab === 'live' && !filterSearch && !filterCondition && !filterHealth) {
+                    if (activeTab === 'live' && !filterSearch && !filterCondition && !filterHealth && !filterGender && !filterBrand) {
                         if (!lastLatestLink) {
                             lastLatestLink = currentLatestLink;
                         } else if (currentLatestLink !== lastLatestLink) {
