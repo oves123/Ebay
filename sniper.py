@@ -333,7 +333,7 @@ def start_sniper_bot():
                 with open(json_file, "r", encoding="utf-8") as f:
                     for s in json.load(f):
                         if "Link" in s:
-                            seen_items.add(s["Link"])
+                            seen_items.add(s["Link"].split("?")[0])
             except Exception as e:
                 print(f"Error loading {json_file}: {e}")
 
@@ -353,6 +353,9 @@ def start_sniper_bot():
                 
                 for item in data.get("itemSummaries", []):
                     url = item.get("itemWebUrl", "")
+                    if url:
+                        url = url.split("?")[0] # Strip eBay tracking parameters
+                        
                     if not url or url in seen_items:
                         continue
                     

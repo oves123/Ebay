@@ -632,6 +632,9 @@
             
             if (!append) {
                 grid.innerHTML = '';
+                window.seenLinks = new Set();
+            } else if (!window.seenLinks) {
+                window.seenLinks = new Set();
             }
             
             if (deals.length === 0 && !append) {
@@ -640,6 +643,11 @@
             }
 
             deals.forEach(item => {
+                // Strip tracking parameters to catch duplicates
+                const cleanLink = item.link ? item.link.split('?')[0] : '';
+                if (cleanLink && window.seenLinks.has(cleanLink)) return;
+                if (cleanLink) window.seenLinks.add(cleanLink);
+
                 const isBelowScrap = item.scrap_value && item.scrap_value !== 'N/A' && item.price < parseInt(item.scrap_value.replace('$', ''));
                 
                 const card = document.createElement('div');
