@@ -1,1 +1,1 @@
-web: python sniper.py
+web: python -u sniper.py
