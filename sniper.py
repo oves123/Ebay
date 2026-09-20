@@ -243,7 +243,7 @@ def find_contact_info(text):
 # -------------------------------------------------------------------------
 # STATE & HELPERS
 # -------------------------------------------------------------------------
-seen_items = set()
+seen_items = {}
 
 def format_buying_options(options_list):
     tags = []
@@ -332,8 +332,11 @@ def start_sniper_bot():
             try:
                 with open(json_file, "r", encoding="utf-8") as f:
                     for s in json.load(f):
-                        if "Link" in s:
-                            seen_items.add(s["Link"].split("?")[0])
+                        if "Link" in s and "Price" in s:
+                            try:
+                                seen_items[s["Link"].split("?")[0]] = float(s["Price"])
+                            except (ValueError, TypeError):
+                                seen_items[s["Link"].split("?")[0]] = 999999.0
             except Exception as e:
                 print(f"Error loading {json_file}: {e}")
 
@@ -356,12 +359,33 @@ def start_sniper_bot():
                     if url:
                         url = url.split("?")[0] # Strip eBay tracking parameters
                         
-                    if not url or url in seen_items:
+                    if not url:
                         continue
+                        
+                    # Extract price early for price drop detection
+                    price_dict = item.get("price", {})
+                    try:
+                        raw_price = float(price_dict.get("value", 999999))
+                        currency = price_dict.get("currency", "USD")
+                    except:
+                        continue
+                        
+                    price_usd = to_usd(raw_price, currency)
                     
-                    seen_items.add(url)
+                    is_price_drop = False
+                    if url in seen_items:
+                        old_price = seen_items[url]
+                        if price_usd <= old_price - 1.0: # Dropped by at least $1
+                            is_price_drop = True
+                        else:
+                            continue
+                            
+                    seen_items[url] = price_usd
                     
                     title = item.get("title", "Unknown Title")
+                    if is_price_drop:
+                        title = f"[📉 PRICE DROP] {title}"
+                        
                     short_desc = item.get("shortDescription", "")
                     title_lower = title.lower()
                     
@@ -391,16 +415,7 @@ def start_sniper_bot():
                     if not is_model_locked(full_text, matched_brand):
                         continue
                     
-                    # 4. Currency Conversion & Global Price Limit
-                    price_dict = item.get("price", {})
-                    try:
-                        raw_price = float(price_dict.get("value", 999999))
-                        currency = price_dict.get("currency", "USD")
-                    except:
-                        continue
-                        
-                    price_usd = to_usd(raw_price, currency)
-                    
+                    # 4. Global Price Limit
                     if price_usd < GLOBAL_MIN_PRICE_USD:
                         continue
                         
