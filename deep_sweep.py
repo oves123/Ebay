@@ -55,7 +55,7 @@ SEARCH_BUCKETS = {
     "Girard-Perregaux": 700,
     
     # Sleeping Giants
-    "Vintage Longines": 700,
+    "Longines": 700,
     "Wittnauer": 700,
     "Vintage Seiko Diver": 700,
     "Grand Seiko": 700,
