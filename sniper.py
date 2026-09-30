@@ -84,6 +84,7 @@ TARGETS = [
     ("Universal Geneve", "EBAY_US"), ("Longines", "EBAY_US"), ("Hamilton", "EBAY_US"),
     ("Elgin", "EBAY_US"), ("Mido", "EBAY_US"), ("Favre-Leuba", "EBAY_US"), ("Record", "EBAY_US"),
     ("Enicar", "EBAY_US"), ("Wittnauer", "EBAY_US"), ("Bulova", "EBAY_US"), ("Tissot", "EBAY_US"),
+    ("Breitling", "EBAY_US"), ("Heuer", "EBAY_US"), ("Vacheron Constantin", "EBAY_US"), ("Movado", "EBAY_US"),
     # Misspellings (Hidden gems)
     ("Omiga", "EBAY_US"), ("Rollex", "EBAY_US"), ("Breightling", "EBAY_US"),
     
