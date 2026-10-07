@@ -55,6 +55,7 @@ SEARCH_BUCKETS = {
     "Girard-Perregaux": 700,
     
     # Sleeping Giants
+    "Zodiac": 700,
     "Longines": 700,
     "Wittnauer": 700,
     "Seiko": 700,
@@ -190,7 +191,8 @@ VALID_MODELS = {
     "heuer": ["autavia", "carrera", "monaco", "camaro", "silverstone", "bundeswehr", "calculator"],
     "tissot": ["prx", "seastar", "visodate", "chronograph", "navigator", "t-touch", "pr 516"],
     "bulova": ["spaceview", "accutron", "chronograph", "lunar pilot", "snorkel", "oceanographer"],
-    "movado": ["m95", "museum", "datron", "calendoplan", "super sub sea"]
+    "movado": ["m95", "museum", "datron", "calendoplan", "super sub sea"],
+    "zodiac": ["sea wolf", "aerospace", "super seawolf", "astrographic", "olympos", "chronograph"]
 }
 
 def is_model_locked(full_text, brand):
