@@ -51,7 +51,7 @@ def get_fcm_tokens():
             h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
             r = requests.get(f"{supabase_url}/rest/v1/fcm_tokens?select=token", headers=h, timeout=5)
             if r.status_code == 200:
-                cached_tokens = [row["token"] for row in r.json() if row.get("token")]
+                cached_tokens = [row["token"] for row in r.json() if row.get("token") and not str(row["token"]).startswith("__")]
                 last_token_fetch = now
                 print(f"🔥 Successfully loaded {len(cached_tokens)} push tokens from Supabase")
         except Exception as se:
@@ -71,6 +71,7 @@ def init_firebase():
         return False, f"Missing firebase_admin library: {e}"
 
     try:
+        # 1. Search for local service account json
         local_files = [
             "ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json",
             os.path.join(os.path.dirname(__file__), "ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json"),
@@ -102,8 +103,32 @@ def init_firebase():
             print("🔥 Firebase Push Notifications Initialized via Environment Variable")
             return True, "Loaded from ENV"
         else:
-            print("⚠️ Firebase Service Account JSON not found in environment!")
-            return False, "FIREBASE_SERVICE_ACCOUNT_JSON environment variable is missing"
+            # 3. Automatic Cloud Fallback: Load credentials securely from Supabase Vault
+            supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
+            supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
+            if supabase_url and supabase_key:
+                try:
+                    import json as _json
+                    h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+                    r = requests.get(f"{supabase_url}/rest/v1/fcm_tokens?token=eq.__firebase_service_account__&select=device_info", headers=h, timeout=6)
+                    if r.status_code == 200:
+                        rows = r.json()
+                        if rows and rows[0].get("device_info"):
+                            raw_cred = rows[0]["device_info"]
+                            cred_dict = _json.loads(raw_cred)
+                            if "private_key" in cred_dict and "\\n" in cred_dict["private_key"]:
+                                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
+                            cred = credentials.Certificate(cred_dict)
+                            if not firebase_admin._apps:
+                                firebase_admin.initialize_app(cred)
+                            firebase_initialized = True
+                            print("🔥 Firebase Push Notifications Initialized via Supabase Cloud Vault!")
+                            return True, "Loaded from Supabase Vault"
+                except Exception as ve:
+                    print(f"Supabase vault load error: {ve}")
+
+            print("⚠️ Firebase Service Account JSON not found in environment or database!")
+            return False, "FIREBASE_SERVICE_ACCOUNT_JSON not found in ENV or Supabase"
     except Exception as e:
         print(f"⚠️ Firebase initialization skipped: {e}")
         return False, f"Init error: {e}"
