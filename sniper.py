@@ -75,16 +75,36 @@ def init_firebase():
         print(f"⚠️ Firebase initialization skipped: {e}")
         return False
 
-def send_mobile_push(title, price_usd, url, image_url=None):
+def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just now", condition="Pre-owned", health_str="", options_str="", scrap_value=0):
     if not init_firebase():
         return
     try:
         from firebase_admin import messaging
         import requests as _requests
         
-        clean_title = title.replace("[🚨 SOLID GOLD]", "").replace("[🎨 RARE DIAL]", "").replace("[🏆 FULL SET B&P]", "").strip()
-        notification_title = f"⚡ ${int(price_usd)} - {clean_title[:45]}"
-        notification_body = "🔥 New deal just listed on eBay! Tap to buy."
+        # 1. Clean Title and Brand/Model
+        clean_title = re.sub(r'\[.*?\]', '', title).strip()
+        display_title = (clean_title[:55] + '..') if len(clean_title) > 55 else clean_title
+        notification_title = f"⚡ ${int(price_usd)} | {display_title}"
+
+        # 2. Build Rich Notification Body with Watch Specs
+        details_list = []
+        if time_listed:
+            details_list.append(f"⏱️ {time_listed}")
+        if health_str and "RUNNING" in health_str.upper():
+            details_list.append("🟢 Running")
+        elif health_str and ("BROKEN" in health_str.upper() or "REPAIR" in health_str.upper()):
+            details_list.append("🔴 Repair/Parts")
+        if condition and condition != "Unknown":
+            details_list.append(f"🏷️ {condition}")
+        if options_str:
+            clean_opts = options_str.replace("Buy It Now", "BIN").replace("Accepts Offers", "Offers")
+            details_list.append(f"📦 {clean_opts}")
+        if scrap_value and scrap_value > 0:
+            details_list.append(f"💰 Scrap: ${scrap_value}")
+
+        body_details = " | ".join(details_list[:3])
+        notification_body = f"{body_details}\n👉 Tap to open eBay and buy now!"
 
         supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
         supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
@@ -99,6 +119,7 @@ def send_mobile_push(title, price_usd, url, image_url=None):
             except Exception as se:
                 print(f"Token fetch notice: {se}")
 
+        # Web Push Configuration for Mobile Safari, Chrome & Android
         webpush_config = messaging.WebpushConfig(
             fcm_options=messaging.WebpushFCMOptions(
                 link=url
@@ -107,9 +128,24 @@ def send_mobile_push(title, price_usd, url, image_url=None):
                 title=notification_title,
                 body=notification_body,
                 icon=image_url if image_url else "https://ir.ebaystatic.com/cr/v/c1/ebay-logo-1-1.png",
-                tag="ebay-deal-" + str(int(time.time()))
-            )
+                image=image_url if image_url else None,
+                tag="ebay-deal-" + str(int(time.time())),
+                renotify=True
+            ),
+            data={
+                "url": url,
+                "link": url,
+                "price": str(price_usd),
+                "title": clean_title
+            }
         )
+
+        data_payload = {
+            "url": str(url),
+            "link": str(url),
+            "price": str(price_usd),
+            "title": str(clean_title)[:80]
+        }
 
         if tokens:
             multicast = messaging.MulticastMessage(
@@ -120,14 +156,10 @@ def send_mobile_push(title, price_usd, url, image_url=None):
                     image=image_url if image_url else None
                 ),
                 webpush=webpush_config,
-                data={
-                    "url": url,
-                    "price": str(price_usd),
-                    "title": title
-                }
+                data=data_payload
             )
             response = messaging.send_each_for_multicast(multicast)
-            print(f"📱 Sent Mobile Push Alert to {response.success_count}/{len(tokens)} registered devices!")
+            print(f"📱 Sent Detailed Mobile Push Alert to {response.success_count}/{len(tokens)} registered devices!")
         else:
             msg = messaging.Message(
                 topic="deals",
@@ -137,11 +169,7 @@ def send_mobile_push(title, price_usd, url, image_url=None):
                     image=image_url if image_url else None
                 ),
                 webpush=webpush_config,
-                data={
-                    "url": url,
-                    "price": str(price_usd),
-                    "title": title
-                }
+                data=data_payload
             )
             messaging.send(msg)
             print("📱 Broadcasted Push Notification to 'deals' topic.")
@@ -694,7 +722,17 @@ def start_sniper_bot():
                             if res.status_code in (200, 201):
                                 # Trigger instant mobile push notification
                                 try:
-                                    send_mobile_push(title=title, price_usd=price_usd, url=url, image_url=image_url)
+                                    send_mobile_push(
+                                        title=title,
+                                        price_usd=price_usd,
+                                        url=url,
+                                        image_url=image_url,
+                                        time_listed=time_listed,
+                                        condition=item.get("condition", "Unknown"),
+                                        health_str=health_str,
+                                        options_str=options_str,
+                                        scrap_value=scrap_value
+                                    )
                                 except Exception as pe:
                                     print(f"Push Trigger Error: {pe}")
                             else:
