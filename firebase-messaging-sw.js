@@ -19,23 +19,33 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message: ', payload);
   
-  const title = payload.notification?.title || payload.data?.title || '⚡ New eBay Snipe Deal!';
-  const body = payload.notification?.body || payload.data?.body || 'A new profitable watch was just listed.';
-  const linkUrl = payload.fcmOptions?.link || payload.data?.url || payload.data?.link || payload.notification?.click_action || 'https://ebay-1e4.pages.dev/';
-  const icon = payload.notification?.icon || payload.data?.image_url || 'https://ir.ebaystatic.com/cr/v/c1/ebay-logo-1-1.png';
-  const image = payload.notification?.image || payload.data?.image_url || undefined;
+  // DEDUPLICATION FIX: If payload.notification exists, the Firebase SDK / browser
+  // handles displaying the notification automatically. Calling self.registration.showNotification()
+  // creates a duplicate banner on mobile and desktop!
+  if (payload.notification) {
+    console.log('[firebase-messaging-sw.js] Handled automatically by Firebase SDK. Suppressing duplicate banner.');
+    return;
+  }
+
+  // Fallback for data-only push messages:
+  const title = payload.data?.title || '⚡ New eBay Snipe Deal!';
+  const body = payload.data?.body || 'A new profitable watch was just listed.';
+  const linkUrl = payload.data?.url || payload.data?.link || 'https://ebay-1e4.pages.dev/';
+  const icon = payload.data?.image_url || 'https://ir.ebaystatic.com/cr/v/c1/ebay-logo-1-1.png';
+  const itemId = payload.data?.item_id || payload.data?.id || (linkUrl.match(/\/(\d{9,14})/)?.[1]) || 'deal';
 
   const notificationOptions = {
     body: body,
     icon: icon,
     badge: icon,
-    image: image,
+    image: icon,
     data: {
       url: linkUrl,
+      link: linkUrl,
       FCM_MSG: payload
     },
-    tag: 'ebay-deal-' + (payload.data?.id || Date.now()),
-    renotify: true,
+    tag: 'ebay-deal-' + itemId,
+    renotify: false,
     vibrate: [200, 100, 200, 100, 200]
   };
 

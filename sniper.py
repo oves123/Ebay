@@ -59,9 +59,10 @@ def get_fcm_tokens():
             h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
             r = requests.get(f"{supabase_url}/rest/v1/fcm_tokens?select=token", headers=h, timeout=5)
             if r.status_code == 200:
-                cached_tokens = [row["token"] for row in r.json() if row.get("token") and not str(row["token"]).startswith("__")]
+                raw_tokens = [row["token"] for row in r.json() if row.get("token") and not str(row["token"]).startswith("__")]
+                cached_tokens = list(dict.fromkeys(raw_tokens))
                 last_token_fetch = now
-                print(f"🔥 Successfully loaded {len(cached_tokens)} push tokens from Supabase")
+                print(f"🔥 Successfully loaded {len(cached_tokens)} unique push tokens from Supabase")
         except Exception as se:
             print(f"Token fetch notice: {se}")
     return cached_tokens
@@ -154,10 +155,22 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
     try:
         from firebase_admin import messaging
         
+        # Extract clean eBay item ID for OS-level deduplication tag
+        item_id_match = re.search(r'/itm/(\d+)', url)
+        ebay_item_id = item_id_match.group(1) if item_id_match else str(abs(hash(url)))
+        notification_tag = f"ebay-deal-{ebay_item_id}"
+
         # 1. Clean Title and Brand/Model
         clean_title = re.sub(r'\[.*?\]', '', title).strip()
-        display_title = (clean_title[:55] + '..') if len(clean_title) > 55 else clean_title
-        notification_title = f"⚡ ${int(price_usd)} | {display_title}"
+        
+        # Highlight distinct features like dial color or ref to distinguish similar watches
+        dial_match = re.search(r'\b(blue|black|white|silver|gold|green|red|salmon|grey|gray|yellow|orange|champagne)\s+dial\b', clean_title, re.IGNORECASE)
+        dial_suffix = f" ({dial_match.group(0).title()})" if dial_match else ""
+        
+        concise = re.sub(r'\b(men\'s|mens|women\'s|womens|stainless|steel|watch|wrist|automatic|quartz)\b', '', clean_title, flags=re.IGNORECASE)
+        concise = re.sub(r'\s+', ' ', concise).strip()
+        display_title = (concise[:42] + '..') if len(concise) > 42 else concise
+        notification_title = f"⚡ ${int(price_usd)} | {display_title}{dial_suffix}"
 
         # 2. Build Rich Notification Body with Watch Specs
         details_list = []
@@ -190,14 +203,15 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
                 body=notification_body,
                 icon=image_url if image_url else "https://ir.ebaystatic.com/cr/v/c1/ebay-logo-1-1.png",
                 image=image_url if image_url else None,
-                tag="ebay-deal-" + str(int(time.time())),
-                renotify=True
+                tag=notification_tag,
+                renotify=False
             ),
             data={
-                "url": url,
-                "link": url,
+                "url": str(url),
+                "link": str(url),
                 "price": str(price_usd),
-                "title": clean_title
+                "title": clean_title,
+                "item_id": ebay_item_id
             }
         )
 
@@ -205,7 +219,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
             "url": str(url),
             "link": str(url),
             "price": str(price_usd),
-            "title": str(clean_title)[:80]
+            "title": str(clean_title)[:80],
+            "item_id": str(ebay_item_id)
         }
 
         if tokens:
@@ -567,6 +582,8 @@ def start_sniper_bot():
             except Exception as e:
                 print(f"Error loading {json_file}: {e}")
 
+    seen_notifications = set()
+
     # Also load recent deals from Supabase Cloud so Render restarts never treat old deals as new
     supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
     supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
@@ -583,6 +600,10 @@ def start_sniper_bot():
                             seen_items[clean_link] = float(cd.get("price", 999999))
                         except (ValueError, TypeError):
                             seen_items[clean_link] = 999999.0
+                        m = re.search(r'/itm/(\d+)', clean_link)
+                        if m:
+                            seen_notifications.add(m.group(1))
+                        seen_notifications.add(clean_link)
                 print(f"Loaded {len(cloud_deals)} existing deals from Supabase Cloud into memory.")
         except Exception as se:
             print(f"Notice: Supabase seed error: {se}")
@@ -797,21 +818,29 @@ def start_sniper_bot():
                             
                         # 1. TRIGGER INSTANT MOBILE PUSH NOTIFICATION IMMEDIATELY
                         push_status = "Not sent"
-                        try:
-                            push_status = send_mobile_push(
-                                title=title,
-                                price_usd=price_usd,
-                                url=url,
-                                image_url=image_url,
-                                time_listed=time_listed,
-                                condition=item.get("condition", "Unknown"),
-                                health_str=health_str,
-                                options_str=options_str,
-                                scrap_value=scrap_value
-                            )
-                        except Exception as pe:
-                            push_status = f"Push Trigger Error: {pe}"
-                            print(push_status)
+                        item_id_match = re.search(r'/itm/(\d+)', url)
+                        item_id_key = item_id_match.group(1) if item_id_match else url
+
+                        if item_id_key in seen_notifications and not is_price_drop:
+                            push_status = f"Deduplicated: Already notified item {item_id_key}"
+                            print(f"ℹ️ {push_status}")
+                        else:
+                            seen_notifications.add(item_id_key)
+                            try:
+                                push_status = send_mobile_push(
+                                    title=title,
+                                    price_usd=price_usd,
+                                    url=url,
+                                    image_url=image_url,
+                                    time_listed=time_listed,
+                                    condition=item.get("condition", "Unknown"),
+                                    health_str=health_str,
+                                    options_str=options_str,
+                                    scrap_value=scrap_value
+                                )
+                            except Exception as pe:
+                                push_status = f"Push Trigger Error: {pe}"
+                                print(push_status)
 
                         # 2. PUSH TO SUPABASE CLOUD (UPSERT)
                         supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
