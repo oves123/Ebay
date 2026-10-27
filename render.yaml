@@ -7,6 +7,7 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python free_server.py"
     envVars:
+      - fromGroup: ebay
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY

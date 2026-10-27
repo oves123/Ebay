@@ -35,16 +35,42 @@ def run_server():
 # FIREBASE PUSH NOTIFICATION ENGINE
 # -------------------------------------------------------------------------
 firebase_initialized = False
+cached_tokens = []
+last_token_fetch = 0
+
+def get_fcm_tokens():
+    global cached_tokens, last_token_fetch
+    now = time.time()
+    if cached_tokens and (now - last_token_fetch < 60):
+        return cached_tokens
+    
+    supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
+    supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
+    if supabase_url and supabase_key:
+        try:
+            h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+            r = requests.get(f"{supabase_url}/rest/v1/fcm_tokens?select=token", headers=h, timeout=5)
+            if r.status_code == 200:
+                cached_tokens = [row["token"] for row in r.json() if row.get("token")]
+                last_token_fetch = now
+                print(f"🔥 Successfully loaded {len(cached_tokens)} push tokens from Supabase")
+        except Exception as se:
+            print(f"Token fetch notice: {se}")
+    return cached_tokens
 
 def init_firebase():
     global firebase_initialized
-    if firebase_initialized:
-        return True
     try:
         import firebase_admin
         from firebase_admin import credentials
-        
-        # 1. Search for local service account json
+        if firebase_admin._apps:
+            firebase_initialized = True
+            return True
+    except ImportError as e:
+        print(f"⚠️ firebase-admin library not installed: {e}")
+        return False
+
+    try:
         local_files = [
             "ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json",
             os.path.join(os.path.dirname(__file__), "ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json"),
@@ -56,15 +82,22 @@ def init_firebase():
         
         if cred_path:
             cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
+            if not firebase_admin._apps:
+                firebase_admin.initialize_app(cred)
             firebase_initialized = True
             print(f"🔥 Firebase Push Notifications Initialized with {os.path.basename(cred_path)}")
             return True
         elif cred_env:
             import json as _json
-            cred_dict = _json.loads(cred_env)
+            clean_env = cred_env.strip()
+            if (clean_env.startswith("'") and clean_env.endswith("'")) or (clean_env.startswith('"') and clean_env.endswith('"')):
+                clean_env = clean_env[1:-1]
+            cred_dict = _json.loads(clean_env)
+            if "private_key" in cred_dict and "\\n" in cred_dict["private_key"]:
+                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
             cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
+            if not firebase_admin._apps:
+                firebase_admin.initialize_app(cred)
             firebase_initialized = True
             print("🔥 Firebase Push Notifications Initialized via Environment Variable")
             return True
@@ -80,7 +113,6 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         return
     try:
         from firebase_admin import messaging
-        import requests as _requests
         
         # 1. Clean Title and Brand/Model
         clean_title = re.sub(r'\[.*?\]', '', title).strip()
@@ -106,18 +138,7 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         body_details = " | ".join(details_list[:3])
         notification_body = f"{body_details}\n👉 Tap to open eBay and buy now!"
 
-        supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
-        supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
-        
-        tokens = []
-        if supabase_url and supabase_key:
-            try:
-                h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
-                r = _requests.get(f"{supabase_url}/rest/v1/fcm_tokens?select=token", headers=h, timeout=4)
-                if r.status_code == 200:
-                    tokens = [row["token"] for row in r.json() if row.get("token")]
-            except Exception as se:
-                print(f"Token fetch notice: {se}")
+        tokens = get_fcm_tokens()
 
         # Web Push Configuration for Mobile Safari, Chrome & Android
         webpush_config = messaging.WebpushConfig(
@@ -686,7 +707,23 @@ def start_sniper_bot():
                         with open(json_file, "w", encoding="utf-8") as f:
                             json.dump(snipes, f, indent=4)
                             
-                        # PUSH TO SUPABASE CLOUD (UPSERT)
+                        # 1. TRIGGER INSTANT MOBILE PUSH NOTIFICATION IMMEDIATELY
+                        try:
+                            send_mobile_push(
+                                title=title,
+                                price_usd=price_usd,
+                                url=url,
+                                image_url=image_url,
+                                time_listed=time_listed,
+                                condition=item.get("condition", "Unknown"),
+                                health_str=health_str,
+                                options_str=options_str,
+                                scrap_value=scrap_value
+                            )
+                        except Exception as pe:
+                            print(f"Push Trigger Error: {pe}")
+
+                        # 2. PUSH TO SUPABASE CLOUD (UPSERT)
                         supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
                         supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
                         print(f"DEBUG: SUPABASE_URL loaded: {bool(supabase_url)}")
@@ -719,23 +756,7 @@ def start_sniper_bot():
                             }
                             
                             res = requests.post(f"{supabase_url}/rest/v1/live_snipes?on_conflict=link", headers=headers, json=payload, timeout=10)
-                            if res.status_code in (200, 201):
-                                # Trigger instant mobile push notification
-                                try:
-                                    send_mobile_push(
-                                        title=title,
-                                        price_usd=price_usd,
-                                        url=url,
-                                        image_url=image_url,
-                                        time_listed=time_listed,
-                                        condition=item.get("condition", "Unknown"),
-                                        health_str=health_str,
-                                        options_str=options_str,
-                                        scrap_value=scrap_value
-                                    )
-                                except Exception as pe:
-                                    print(f"Push Trigger Error: {pe}")
-                            else:
+                            if not res.ok:
                                 print(f"\033[91mCloud Sync Error: {res.text}\033[0m")
                                 
                     except Exception as e:

@@ -15,6 +15,33 @@ def read_root():
 def ping():
     return "pong"
 
+@app.get("/debug-firebase")
+def debug_firebase():
+    env_val = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+    status = sniper.init_firebase()
+    tokens = sniper.get_fcm_tokens()
+    return {
+        "FIREBASE_SERVICE_ACCOUNT_JSON_set": bool(env_val),
+        "FIREBASE_SERVICE_ACCOUNT_JSON_len": len(env_val) if env_val else 0,
+        "firebase_initialized": status,
+        "registered_tokens_count": len(tokens)
+    }
+
+@app.get("/test-push")
+def test_push_endpoint():
+    try:
+        sniper.send_mobile_push(
+            title="⚡ Render Cloud Bot Alert",
+            price_usd=195,
+            url="https://ebay-1e4.pages.dev/",
+            time_listed="Just now",
+            condition="Pre-owned - Excellent",
+            health_str="[RUNNING]"
+        )
+        return {"status": "success", "message": "Push notification sent to all registered devices from Render!"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 def run_bot_in_background():
     print("Starting background sniper bot on Render Free Tier...")
     try:
