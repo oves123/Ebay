@@ -65,10 +65,10 @@ def init_firebase():
         from firebase_admin import credentials
         if firebase_admin._apps:
             firebase_initialized = True
-            return True
+            return True, "App already initialized"
     except ImportError as e:
         print(f"⚠️ firebase-admin library not installed: {e}")
-        return False
+        return False, f"Missing firebase_admin library: {e}"
 
     try:
         local_files = [
@@ -86,7 +86,7 @@ def init_firebase():
                 firebase_admin.initialize_app(cred)
             firebase_initialized = True
             print(f"🔥 Firebase Push Notifications Initialized with {os.path.basename(cred_path)}")
-            return True
+            return True, f"Loaded from file {os.path.basename(cred_path)}"
         elif cred_env:
             import json as _json
             clean_env = cred_env.strip()
@@ -100,17 +100,19 @@ def init_firebase():
                 firebase_admin.initialize_app(cred)
             firebase_initialized = True
             print("🔥 Firebase Push Notifications Initialized via Environment Variable")
-            return True
+            return True, "Loaded from ENV"
         else:
-            print("⚠️ Firebase Service Account JSON not found. Push notifications will be skipped.")
-            return False
+            print("⚠️ Firebase Service Account JSON not found in environment!")
+            return False, "FIREBASE_SERVICE_ACCOUNT_JSON environment variable is missing"
     except Exception as e:
         print(f"⚠️ Firebase initialization skipped: {e}")
-        return False
+        return False, f"Init error: {e}"
 
 def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just now", condition="Pre-owned", health_str="", options_str="", scrap_value=0):
-    if not init_firebase():
-        return
+    ok, init_msg = init_firebase()
+    if not ok:
+        print(f"⚠️ Push notification skipped: {init_msg}")
+        return f"Skipped: {init_msg}"
     try:
         from firebase_admin import messaging
         
@@ -180,7 +182,9 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
                 data=data_payload
             )
             response = messaging.send_each_for_multicast(multicast)
+            status_text = f"Sent to {response.success_count}/{len(tokens)} devices"
             print(f"📱 Sent Detailed Mobile Push Alert to {response.success_count}/{len(tokens)} registered devices!")
+            return status_text
         else:
             msg = messaging.Message(
                 topic="deals",
@@ -194,8 +198,10 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
             )
             messaging.send(msg)
             print("📱 Broadcasted Push Notification to 'deals' topic.")
+            return "Sent to topic: deals"
     except Exception as e:
         print(f"⚠️ Push notification send error: {e}")
+        return f"Send error: {e}"
 
 # -------------------------------------------------------------------------
 # CONFIGURATION V4 - GLOBAL ARBITRAGE & ESTATE HUNTER
@@ -708,8 +714,9 @@ def start_sniper_bot():
                             json.dump(snipes, f, indent=4)
                             
                         # 1. TRIGGER INSTANT MOBILE PUSH NOTIFICATION IMMEDIATELY
+                        push_status = "Not sent"
                         try:
-                            send_mobile_push(
+                            push_status = send_mobile_push(
                                 title=title,
                                 price_usd=price_usd,
                                 url=url,
@@ -721,7 +728,8 @@ def start_sniper_bot():
                                 scrap_value=scrap_value
                             )
                         except Exception as pe:
-                            print(f"Push Trigger Error: {pe}")
+                            push_status = f"Push Trigger Error: {pe}"
+                            print(push_status)
 
                         # 2. PUSH TO SUPABASE CLOUD (UPSERT)
                         supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
@@ -736,6 +744,10 @@ def start_sniper_bot():
                                 "Prefer": "resolution=merge-duplicates"
                             }
                             
+                            contacts_entry = f"Push: {push_status}"
+                            if contacts:
+                                contacts_entry += f" | {', '.join(contacts)}"
+
                             payload = {
                                 "query": query,
                                 "region": market,
@@ -748,7 +760,7 @@ def start_sniper_bot():
                                 "condition": item.get("condition", "Unknown"),
                                 "health": health_str,
                                 "scrap_value": f"${scrap_value}" if scrap_value else "N/A",
-                                "contacts": ", ".join(contacts) if contacts else "None",
+                                "contacts": contacts_entry,
                                 "seller": seller.get("username", "Unknown"),
                                 "link": url,
                                 "excel_link": f'=HYPERLINK("{url}", "Open eBay")',
