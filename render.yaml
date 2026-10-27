@@ -19,6 +19,8 @@ services:
         sync: false
       - key: EBAY_DEV_ID
         sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
 
   # The Auto-Sweeper (Runs deep_sweep.py every 4 hours to refresh all 11,000+ items)
   - type: cron

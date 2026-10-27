@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>eBay Arbitrage Engine</title>
+    <!-- Firebase Cloud Messaging SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"></script>
     <style>
         :root {
             --bg-color: #f7f7f7;
@@ -94,6 +97,12 @@
         #sound-btn.active {
             color: var(--primary-color);
             border-color: var(--primary-color);
+        }
+        #notif-btn.active {
+            color: #ffffff;
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+            font-weight: bold;
         }
 
         /* Filters */
@@ -376,6 +385,7 @@
 
         <div class="controls">
             <button id="sound-btn" onclick="toggleSound()">🔈 Sound OFF</button>
+            <button id="notif-btn" onclick="togglePushNotifications()">🔔 Enable Mobile Push</button>
             <label id="auto-refresh-label"><input type="checkbox" id="auto-refresh" checked> Auto-Refresh</label>
             <button onclick="fetchData()">🔄 Refresh Now</button>
         </div>
@@ -469,11 +479,175 @@
         let filterGender = "";
         let filterBrand = "";
 
+        // --- Firebase Cloud Messaging (Web Push Notifications) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCo9eYtPKHoqYLjHQGTgIAeorYZjXEVaqU",
+            authDomain: "ebay-sniper-alerts.firebaseapp.com",
+            projectId: "ebay-sniper-alerts",
+            storageBucket: "ebay-sniper-alerts.firebasestorage.app",
+            messagingSenderId: "1092042612715",
+            appId: "1:1092042612715:web:e129e0fff61062849643ae",
+            measurementId: "G-X2V0MSH122"
+        };
+        const VAPID_KEY = "BHHxg6NdAyjUrU3Lrf4b1O-7xOt94KHEhpyxaYtwjhUw1mBAI-sN2M9QRS80x4r-5Mxnfm9KUonelN_MLBK14q0";
+
+        firebase.initializeApp(firebaseConfig);
+        let fcmMessaging = null;
+        try {
+            if (firebase.messaging.isSupported()) {
+                fcmMessaging = firebase.messaging();
+            }
+        } catch (e) {
+            console.warn("FCM messaging not supported in this environment:", e);
+        }
+
+        async function checkNotificationState() {
+            const btn = document.getElementById('notif-btn');
+            if (!btn) return;
+            if (!('Notification' in window)) {
+                btn.innerHTML = '🔔 Push Not Supported';
+                btn.disabled = true;
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                btn.innerHTML = '🔔 Push Alerts Active';
+                btn.classList.add('active');
+                registerFCMToken(false);
+            } else if (Notification.permission === 'denied') {
+                btn.innerHTML = '🔕 Push Blocked';
+                btn.classList.remove('active');
+            } else {
+                btn.innerHTML = '🔔 Enable Mobile Push';
+                btn.classList.remove('active');
+            }
+        }
+
+        async function registerFCMToken(showAlert = true) {
+            if (!fcmMessaging) return;
+            try {
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                const token = await fcmMessaging.getToken({
+                    vapidKey: VAPID_KEY,
+                    serviceWorkerRegistration: registration
+                });
+
+                if (token) {
+                    console.log("FCM Device Token:", token);
+                    await saveTokenToSupabase(token);
+                    const btn = document.getElementById('notif-btn');
+                    if (btn) {
+                        btn.innerHTML = '🔔 Push Alerts Active';
+                        btn.classList.add('active');
+                    }
+                    if (showAlert) {
+                        alert("✅ Push notifications enabled! You will now receive alerts on your phone whenever a new deal is found.");
+                    }
+                }
+            } catch (err) {
+                console.error("Error obtaining FCM token:", err);
+                if (showAlert) {
+                    alert("Could not enable push alerts: " + (err.message || err));
+                }
+            }
+        }
+
+        async function saveTokenToSupabase(token) {
+            try {
+                const deviceInfo = (navigator.userAgent || 'Unknown Device').substring(0, 150);
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/fcm_tokens`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        token: token,
+                        device_info: deviceInfo,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+                if (res.ok) {
+                    console.log("Token synced to Supabase.");
+                } else {
+                    console.warn("Notice: Table fcm_tokens may not exist in Supabase yet. Result:", await res.text());
+                }
+            } catch (e) {
+                console.error("Supabase sync error:", e);
+            }
+        }
+
+        async function togglePushNotifications() {
+            if (!('Notification' in window)) {
+                alert("Your browser does not support push notifications.");
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                alert("Push notifications are already active on this device!");
+                registerFCMToken(false);
+                return;
+            }
+            if (Notification.permission === 'denied') {
+                alert("Notifications are blocked in your browser settings. Please allow notifications by tapping the lock/settings icon near the address bar.");
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                registerFCMToken(true);
+            } else {
+                alert("Notification permission was denied.");
+            }
+        }
+
+        if (fcmMessaging) {
+            fcmMessaging.onMessage((payload) => {
+                console.log("Foreground message received:", payload);
+                playDing();
+                const title = payload.notification?.title || payload.data?.title || "⚡ New Deal!";
+                const body = payload.notification?.body || payload.data?.body || "";
+                const url = payload.data?.url || payload.data?.link || payload.notification?.click_action;
+                showFloatingToast(title, body, url);
+            });
+        }
+
+        function showFloatingToast(title, body, url) {
+            let toast = document.getElementById('toast-alert');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-alert';
+                toast.style.position = 'fixed';
+                toast.style.bottom = '20px';
+                toast.style.right = '20px';
+                toast.style.backgroundColor = '#191919';
+                toast.style.color = '#ffffff';
+                toast.style.padding = '14px 20px';
+                toast.style.borderRadius = '10px';
+                toast.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
+                toast.style.zIndex = '9999';
+                toast.style.cursor = 'pointer';
+                toast.style.maxWidth = '320px';
+                toast.style.borderLeft = '4px solid #86b817';
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<div style="font-weight:bold; margin-bottom:4px; color:#86b817;">${escapeHTML(title)}</div><div style="font-size:13px; color:#ddd;">${escapeHTML(body)}</div>`;
+            toast.style.display = 'block';
+            toast.onclick = () => {
+                if (url) window.open(url, '_blank');
+                toast.style.display = 'none';
+            };
+            setTimeout(() => {
+                if (toast) toast.style.display = 'none';
+            }, 8000);
+        }
+
         // Initial setup
         document.getElementById('auto-refresh').addEventListener('change', (e) => {
             setupPolling(e.target.checked);
         });
         
+        checkNotificationState();
         fetchData();
         setupPolling(true);
         

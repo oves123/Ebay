@@ -32,6 +32,123 @@ def run_server():
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 # -------------------------------------------------------------------------
+# FIREBASE PUSH NOTIFICATION ENGINE
+# -------------------------------------------------------------------------
+firebase_initialized = False
+
+def init_firebase():
+    global firebase_initialized
+    if firebase_initialized:
+        return True
+    try:
+        import firebase_admin
+        from firebase_admin import credentials
+        
+        # 1. Search for local service account json
+        local_files = [
+            "ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json",
+            os.path.join(os.path.dirname(__file__), "ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json"),
+            "C:\\Users\\Oves\\Desktop\\Ebay\\ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json",
+            "C:\\Users\\Oves\\Desktop\\ebay-sniper-alerts-firebase-adminsdk-fbsvc-7132eb45cb.json"
+        ]
+        cred_path = next((f for f in local_files if os.path.exists(f)), None)
+        cred_env = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+        
+        if cred_path:
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+            firebase_initialized = True
+            print(f"🔥 Firebase Push Notifications Initialized with {os.path.basename(cred_path)}")
+            return True
+        elif cred_env:
+            import json as _json
+            cred_dict = _json.loads(cred_env)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            firebase_initialized = True
+            print("🔥 Firebase Push Notifications Initialized via Environment Variable")
+            return True
+        else:
+            print("⚠️ Firebase Service Account JSON not found. Push notifications will be skipped.")
+            return False
+    except Exception as e:
+        print(f"⚠️ Firebase initialization skipped: {e}")
+        return False
+
+def send_mobile_push(title, price_usd, url, image_url=None):
+    if not init_firebase():
+        return
+    try:
+        from firebase_admin import messaging
+        import requests as _requests
+        
+        clean_title = title.replace("[🚨 SOLID GOLD]", "").replace("[🎨 RARE DIAL]", "").replace("[🏆 FULL SET B&P]", "").strip()
+        notification_title = f"⚡ ${int(price_usd)} - {clean_title[:45]}"
+        notification_body = "🔥 New deal just listed on eBay! Tap to buy."
+
+        supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
+        supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
+        
+        tokens = []
+        if supabase_url and supabase_key:
+            try:
+                h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+                r = _requests.get(f"{supabase_url}/rest/v1/fcm_tokens?select=token", headers=h, timeout=4)
+                if r.status_code == 200:
+                    tokens = [row["token"] for row in r.json() if row.get("token")]
+            except Exception as se:
+                print(f"Token fetch notice: {se}")
+
+        webpush_config = messaging.WebpushConfig(
+            fcm_options=messaging.WebpushFCMOptions(
+                link=url
+            ),
+            notification=messaging.WebpushNotification(
+                title=notification_title,
+                body=notification_body,
+                icon=image_url if image_url else "https://ir.ebaystatic.com/cr/v/c1/ebay-logo-1-1.png",
+                tag="ebay-deal-" + str(int(time.time()))
+            )
+        )
+
+        if tokens:
+            multicast = messaging.MulticastMessage(
+                tokens=tokens,
+                notification=messaging.Notification(
+                    title=notification_title,
+                    body=notification_body,
+                    image=image_url if image_url else None
+                ),
+                webpush=webpush_config,
+                data={
+                    "url": url,
+                    "price": str(price_usd),
+                    "title": title
+                }
+            )
+            response = messaging.send_each_for_multicast(multicast)
+            print(f"📱 Sent Mobile Push Alert to {response.success_count}/{len(tokens)} registered devices!")
+        else:
+            msg = messaging.Message(
+                topic="deals",
+                notification=messaging.Notification(
+                    title=notification_title,
+                    body=notification_body,
+                    image=image_url if image_url else None
+                ),
+                webpush=webpush_config,
+                data={
+                    "url": url,
+                    "price": str(price_usd),
+                    "title": title
+                }
+            )
+            messaging.send(msg)
+            print("📱 Broadcasted Push Notification to 'deals' topic.")
+    except Exception as e:
+        print(f"⚠️ Push notification send error: {e}")
+
+# -------------------------------------------------------------------------
 # CONFIGURATION V4 - GLOBAL ARBITRAGE & ESTATE HUNTER
 # -------------------------------------------------------------------------
 POLL_DELAY_SECONDS = 17 
@@ -574,7 +691,13 @@ def start_sniper_bot():
                             }
                             
                             res = requests.post(f"{supabase_url}/rest/v1/live_snipes?on_conflict=link", headers=headers, json=payload, timeout=10)
-                            if res.status_code not in (200, 201):
+                            if res.status_code in (200, 201):
+                                # Trigger instant mobile push notification
+                                try:
+                                    send_mobile_push(title=title, price_usd=price_usd, url=url, image_url=image_url)
+                                except Exception as pe:
+                                    print(f"Push Trigger Error: {pe}")
+                            else:
                                 print(f"\033[91mCloud Sync Error: {res.text}\033[0m")
                                 
                     except Exception as e:
