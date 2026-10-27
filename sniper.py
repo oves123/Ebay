@@ -14,6 +14,14 @@ from dotenv import load_dotenv
 import uvicorn
 from fastapi import FastAPI
 
+# Ensure UTF-8 output encoding on Windows consoles
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 # Fallback for local vs cloud
 if os.path.exists("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env"):
     load_dotenv("c:/Users/Oves/Desktop/Ebay/ebay-mcp/.env")
@@ -134,6 +142,11 @@ def init_firebase():
         return False, f"Init error: {e}"
 
 def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just now", condition="Pre-owned", health_str="", options_str="", scrap_value=0):
+    # Safety guard: Suppress push notifications for old/historical listings
+    if time_listed and ("h ago" in time_listed or "d ago" in time_listed) and "[📉 PRICE DROP]" not in title:
+        print(f"[SUPPRESSED] Push Notification suppressed for old listing ({time_listed}): {title[:50]}")
+        return f"Suppressed: Old listing ({time_listed})"
+
     ok, init_msg = init_firebase()
     if not ok:
         print(f"⚠️ Push notification skipped: {init_msg}")
@@ -236,6 +249,9 @@ MAX_AUTO_OPENS_PER_MIN = 2
 
 GLOBAL_MIN_PRICE_USD = 50.0
 GLOBAL_MAX_PRICE_USD = 700.0
+
+# Strict age gate: Only notify & record listings posted in the last 30 minutes (real-time live snipes)
+MAX_SNIPE_AGE_MINUTES = 30
 
 # Brand-Specific Ceilings (Overrides the $700 Global Max)
 BRAND_LIMITS_USD = {
@@ -458,6 +474,18 @@ def extract_gender(full_text):
         return "Mens"
     return "Unisex"
 
+def get_item_age_minutes(creation_date_str):
+    if not creation_date_str:
+        return 999999
+    try:
+        creation_date_str = creation_date_str.replace('Z', '+00:00')
+        creation_time = datetime.fromisoformat(creation_date_str)
+        now = datetime.now(timezone.utc)
+        time_since = now - creation_time
+        return max(0, int(time_since.total_seconds() // 60))
+    except Exception:
+        return 999999
+
 def parse_time_listed(creation_date_str):
     if not creation_date_str:
         return "Unknown"
@@ -472,7 +500,7 @@ def parse_time_listed(creation_date_str):
             hours = time_since.seconds // 3600
             if hours == 0:
                 mins = time_since.seconds // 60
-                return f"{mins}m ago"
+                return f"{mins}m ago" if mins > 0 else "Just now"
             return f"{hours}h ago"
         elif days < 7:
             return f"{days}d ago"
@@ -539,7 +567,27 @@ def start_sniper_bot():
             except Exception as e:
                 print(f"Error loading {json_file}: {e}")
 
-    print(f"Loaded {len(seen_items)} previously seen deals from local backups.")
+    # Also load recent deals from Supabase Cloud so Render restarts never treat old deals as new
+    supabase_url = os.getenv("SUPABASE_URL", "").strip('"').strip("'")
+    supabase_key = os.getenv("SUPABASE_KEY", "").strip('"').strip("'")
+    if supabase_url and supabase_key:
+        try:
+            h = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+            r = requests.get(f"{supabase_url}/rest/v1/live_snipes?select=link,price&order=id.desc&limit=2000", headers=h, timeout=10)
+            if r.status_code == 200:
+                cloud_deals = r.json()
+                for cd in cloud_deals:
+                    if cd.get("link"):
+                        clean_link = cd["link"].split("?")[0]
+                        try:
+                            seen_items[clean_link] = float(cd.get("price", 999999))
+                        except (ValueError, TypeError):
+                            seen_items[clean_link] = 999999.0
+                print(f"Loaded {len(cloud_deals)} existing deals from Supabase Cloud into memory.")
+        except Exception as se:
+            print(f"Notice: Supabase seed error: {se}")
+
+    print(f"Loaded {len(seen_items)} previously seen deals from local backups & cloud.")
     print("Live monitoring started! Scanning directly for unmissed deals...\n")
     
     while True:
@@ -672,6 +720,15 @@ def start_sniper_bot():
                     image_url = item.get("image", {}).get("imageUrl", "")
                     
                     time_listed = parse_time_listed(item.get("itemCreationDate"))
+                    item_age_mins = get_item_age_minutes(item.get("itemCreationDate"))
+                    is_fresh_listing = (item_age_mins <= MAX_SNIPE_AGE_MINUTES)
+                    
+                    # STRICT GATE: Only truly fresh new listings (e.g. <= 30 mins) or price drops qualify as LIVE SNIPES
+                    if not is_fresh_listing and not is_price_drop:
+                        # Silently remember in seen_items (already set above) so we don't scan again,
+                        # but skip push alert, local export, and Supabase live feed insertion
+                        continue
+
                     gender = extract_gender(full_text)
                     
                     timestamp = datetime.now().strftime("%H:%M:%S")

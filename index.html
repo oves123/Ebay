@@ -604,10 +604,17 @@
         if (fcmMessaging) {
             fcmMessaging.onMessage((payload) => {
                 console.log("Foreground message received:", payload);
-                playDing();
                 const title = payload.notification?.title || payload.data?.title || "⚡ New Deal!";
                 const body = payload.notification?.body || payload.data?.body || "";
                 const url = payload.data?.url || payload.data?.link || payload.notification?.click_action;
+
+                // Double safety: ignore old historical listings (e.g. 10h ago)
+                if (body && (body.includes("h ago") || body.includes("d ago")) && !title.includes("PRICE DROP")) {
+                    console.log("Foreground alert ignored for old listing:", body);
+                    return;
+                }
+
+                playDing();
                 showFloatingToast(title, body, url);
             });
         }
