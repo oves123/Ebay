@@ -257,9 +257,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         return f"Send error: {e}"
 
 # -------------------------------------------------------------------------
-# CONFIGURATION V4 - GLOBAL ARBITRAGE & ESTATE HUNTER
+# CONFIGURATION V5 - BOOLEAN GROUPED QUERIES (7x FASTER SCANNING)
 # -------------------------------------------------------------------------
-POLL_DELAY_SECONDS = 17 
 MAX_AUTO_OPENS_PER_MIN = 2
 
 GLOBAL_MIN_PRICE_USD = 50.0
@@ -300,59 +299,36 @@ BRAND_LIMITS_USD = {
 }
 
 # -------------------------------------------------------------------------
-# MULTI-REGION ARBITRAGE (Targeted Scans)
+# OPTION 1: BOOLEAN GROUPED QUERIES
+# 55 individual calls --> 8 grouped boolean buckets
+# Full scan time: ~16 minutes --> ~2 minutes
+# API usage: 55 calls/cycle --> 8 calls/cycle (stays well within 5,000/day)
 # -------------------------------------------------------------------------
-# We prioritize US for major brands, but scan globally for hidden/generic lots
+# Each tuple: (query_string, marketplace, is_lot_bucket)
 TARGETS = [
-    # US Primary Targets
-    ("Rolex", "EBAY_US"), ("Omega", "EBAY_US"), ("Tudor", "EBAY_US"), ("Seiko", "EBAY_US"),
-    ("Cartier", "EBAY_US"), ("Patek Philippe", "EBAY_US"), ("Audemars Piguet", "EBAY_US"),
-    ("IWC", "EBAY_US"), ("Jaeger-LeCoultre", "EBAY_US"), ("Breguet", "EBAY_US"),
-    ("Blancpain", "EBAY_US"), ("Zenith", "EBAY_US"), ("Girard-Perregaux", "EBAY_US"),
-    ("Universal Geneve", "EBAY_US"), ("Longines", "EBAY_US"), ("Hamilton", "EBAY_US"),
-    ("Elgin", "EBAY_US"), ("Mido", "EBAY_US"), ("Favre-Leuba", "EBAY_US"), ("Record", "EBAY_US"),
-    ("Enicar", "EBAY_US"), ("Wittnauer", "EBAY_US"), ("Bulova", "EBAY_US"), ("Tissot", "EBAY_US"),
-    ("Breitling", "EBAY_US"), ("Heuer", "EBAY_US"), ("Vacheron Constantin", "EBAY_US"), ("Movado", "EBAY_US"), ("Zodiac", "EBAY_US"),
-    # Misspellings (Hidden gems)
-    ("Omiga", "EBAY_US"), ("Rollex", "EBAY_US"), ("Breightling", "EBAY_US"),
-    
-    # Generic SEO & Hidden Gems
-    ("Vintage watch", "EBAY_US"),
-    ("Vintage wrist watch", "EBAY_US"),
-    ("Mens vintage watch", "EBAY_US"),
-    ("Antique watch", "EBAY_US"),
-    ("Retro mens watch", "EBAY_US"),
-    
-    # Movement Types
-    ("Vintage automatic watch", "EBAY_US"),
-    ("Vintage mechanical watch", "EBAY_US"),
-    ("Vintage hand wind watch", "EBAY_US"),
-    ("Old mechanical watch", "EBAY_US"),
-    ("Vintage quartz watch", "EBAY_US"),
-    ("Vintage battery watch", "EBAY_US"),
-    
-    # Styles & Origins
-    ("Vintage diver", "EBAY_US"),
-    ("Vintage chronograph", "EBAY_US"),
-    ("Vintage military watch", "EBAY_US"),
-    ("Swiss vintage watch", "EBAY_US"),
-    ("Solid gold vintage watch", "EBAY_US"),
-    ("14k vintage watch", "EBAY_US"),
-    ("18k vintage watch", "EBAY_US"),
-    
-    # Condition/Flipping SEO terms
-    ("Estate watch", "EBAY_US"),
-    ("Untested vintage watch", "EBAY_US"),
-    ("Vintage watch repair", "EBAY_US"),
-    ("As is vintage watch", "EBAY_US"),
-    ("Vintage project watch", "EBAY_US"),
-    
-    # Lot sweeps
-    ("Watchmaker lot", "EBAY_US"),
-    ("Vintage watch lot", "EBAY_US"),
-    ("Estate watch lot", "EBAY_US"),
-    ("Drawer of old watches", "EBAY_US"),
-    ("Junk drawer watch", "EBAY_US")
+    # Bucket 1 - Luxury Tier 1 (Rolex, Omega, Tudor, Cartier, Breitling, Zenith, Heuer)
+    ("(Rolex, Omega, Tudor, Cartier, Breitling, Zenith, Heuer, TAG Heuer)", "EBAY_US", False),
+
+    # Bucket 2 - Haute Horlogerie (Patek, AP, Vacheron, IWC, JLC, Breguet, Blancpain)
+    ("(Patek Philippe, Audemars Piguet, Vacheron Constantin, IWC, Jaeger-LeCoultre, Breguet, Blancpain)", "EBAY_US", False),
+
+    # Bucket 3 - Vintage Collectibles (Longines, Universal Geneve, Hamilton, Bulova, Tissot, Movado, Zodiac)
+    ("(Longines, Universal Geneve, Hamilton, Bulova, Tissot, Wittnauer, Movado, Zodiac, Wittnauer)", "EBAY_US", False),
+
+    # Bucket 4 - Japanese & Cult Brands (Seiko, Grand Seiko, Enicar, Mido, Favre-Leuba, Elgin)
+    ("(Seiko, Grand Seiko, King Seiko, Enicar, Mido, Favre-Leuba, Elgin, Girard-Perregaux)", "EBAY_US", False),
+
+    # Bucket 5 - Misspellings & Hidden Gems (Omiga, Rollex, Breightling)
+    ("(Omiga, Rollex, Breightling, Pateck, Omaga, Rolleks)", "EBAY_US", False),
+
+    # Bucket 6 - Vintage Styles & Movements
+    ("(vintage automatic watch, vintage mechanical watch, vintage diver, vintage chronograph, vintage military watch, Swiss vintage watch)", "EBAY_US", False),
+
+    # Bucket 7 - Gold & Estate Single Watches
+    ("(14k vintage watch, 18k vintage watch, solid gold vintage watch, estate watch, antique watch, mens vintage watch)", "EBAY_US", False),
+
+    # Bucket 8 - Lots, Junk Drawers, Watchmaker Estates (no category filter)
+    ("(watchmaker lot, vintage watch lot, estate watch lot, drawer of old watches, junk drawer watch, old watches for parts)", "EBAY_US", True),
 ]
 
 # Crude Currency Conversion to USD for filtering UK/German listings
@@ -544,21 +520,28 @@ def check_seller_safety(seller):
     return f" (Feedback: {score})"
 
 def get_smart_delay():
-    # Peak Hours: US Evening (00:00 - 04:00 UTC) and Tokyo Evening (09:00 - 13:00 UTC)
+    """Smart delay between bucket queries to stay within 5,000 calls/day budget.
+    8 buckets per cycle. Budget math:
+      Peak (active hours): 8 buckets x 7s delay = 56s/cycle = ~103 cycles/10h = ~824 calls
+      Off-peak:            8 buckets x 30s delay = 4min/cycle =  ~15 cycles/h  = ~120 calls/h
+    Total well under 5,000/day.
+    """
     current_hour = datetime.now(timezone.utc).hour
-    if 9 <= current_hour <= 13 or 0 <= current_hour <= 4:
-        return 5 # Overdrive
-    return 30 # Economy Mode
+    # US peak listing hours (11:00 AM - 11:00 PM EST = 16:00 - 04:00 UTC)
+    if 16 <= current_hour <= 23 or 0 <= current_hour <= 4:
+        return 7  # Peak: scan every ~56 seconds per full cycle
+    return 20    # Off-peak: scan every ~2.7 minutes per full cycle
 
 # -------------------------------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------------------------------
 def start_sniper_bot():
-    print("=====================================================")
-    print("= EBAY 24/7 WATCH SNIPER (V5 DESCRIPTION DEEP-SCAN) =")
-    print("=====================================================")
+    print("========================================================")
+    print("= EBAY 24/7 WATCH SNIPER (V6 - BOOLEAN GROUPED QUERIES) =")
+    print("========================================================")
     print(f"Monitoring Global Price Range: ${GLOBAL_MIN_PRICE_USD} - ${GLOBAL_MAX_PRICE_USD} USD")
-    print(f"Targeting: {len(TARGETS)} Multi-Region Search Buckets (US, UK, DE)")
+    print(f"Targeting: {len(TARGETS)} Boolean Grouped Buckets (was 55 individual calls!)")
+    print("Full scan cycle: ~2 minutes | API budget: well under 5,000/day")
     print("Waiting for new listings... (Press Ctrl+C to stop)\n")
     
     client = EbayBrowseClient(load_config())
@@ -612,14 +595,14 @@ def start_sniper_bot():
     print("Live monitoring started! Scanning directly for unmissed deals...\n")
     
     while True:
-        for query, market in TARGETS:
+        for query, market, is_lot_bucket in TARGETS:
             try:
                 # Prevent Memory Leak: Cap seen_items at 50,000
                 if len(seen_items) > 50000:
                     seen_items.clear()
-                    
-                cat_id = None if "lot" in query.lower() else "31387"
-                # Changed limit=10 to limit=100 to catch everything in the 15 min gap!
+
+                # Lot buckets search all categories; brand buckets target watches (31387)
+                cat_id = None if is_lot_bucket else "31387"
                 data = client.search(query, limit=100, sort="newlyListed", filter="itemLocationCountry:US", category_ids=cat_id, marketplace=market)
                 
                 for item in data.get("itemSummaries", []):
@@ -676,44 +659,43 @@ def start_sniper_bot():
                         if not re.search(r'\bvintage\b', full_text) and not any(re.search(r'\b' + brand + r'\b', full_text) for brand in luxury_brands):
                             continue
                             
-                    # 3. Model Lock
-                    query_brand_lower = query.lower()
-                    matched_brand = next((b for b in VALID_MODELS.keys() if b in query_brand_lower), query_brand_lower.split()[0])
-                    
-                    if not is_model_locked(full_text, matched_brand):
-                        continue
-                    
+                    # 3. Model Lock (brand detection from full_text, not from query string)
+                    # With grouped queries like "(Rolex, Omega, Tudor...)" we detect
+                    # the actual brand present in the listing title/description.
+                    triggered_brand = next(
+                        (b for b in VALID_MODELS.keys() if re.search(r'\b' + re.escape(b) + r'\b', full_text)),
+                        None
+                    )
+
+                    if not is_lot_bucket:
+                        # Non-lot buckets: must match a known brand or model
+                        if triggered_brand:
+                            if not is_model_locked(full_text, triggered_brand):
+                                continue  # Has brand name but no recognized model — skip accessory/generic
+                        else:
+                            # No known brand found — must at least be a valid generic vintage watch
+                            generic_ok = ["watch", "vintage", "antique", "estate"]
+                            if not any(word in full_text for word in generic_ok):
+                                continue
+
                     # 4. Global Price Limit
                     if price_usd < GLOBAL_MIN_PRICE_USD:
                         continue
-                        
-                    # 4. Apply Brand-Specific Ceiling and Model Lock
+
+                    # 4b. Brand-Specific Ceiling
                     applicable_max_usd = GLOBAL_MAX_PRICE_USD
-                    triggered_brand = None
-                    
-                    for brand, limit in BRAND_LIMITS_USD.items():
-                        if brand in full_text:
-                            triggered_brand = brand
-                            break
-                            
+                    if triggered_brand and triggered_brand in BRAND_LIMITS_USD:
+                        applicable_max_usd = BRAND_LIMITS_USD[triggered_brand]
+
                     if price_usd > applicable_max_usd:
                         continue
-                        
-                    # 5. THE STRICT VALIDATION (Model Lock & Generic Lock)
-                    is_lot_query = any(q in query.lower() for q in ["lot", "estate", "drawer"])
-                    
-                    if is_lot_query:
+
+                    # 5. Lot-bucket validation & Hidden Gem detection
+                    if is_lot_bucket:
                         luxury_brands = ["rolex", "omega", "patek", "audemars", "tudor", "cartier", "breitling", "zenith", "vacheron", "breguet", "iwc", "jaeger-lecoultre", "heuer"]
                         found_lux = [b for b in luxury_brands if re.search(r'\b' + b + r'\b', full_text)]
                         if found_lux:
                             title = f"[💎 HIDDEN GEM: {found_lux[0].upper()}] {title}"
-                    elif triggered_brand:
-                        if not is_model_locked(full_text, triggered_brand):
-                            continue # Throw away accessories that passed the nuke
-                    else:
-                        valid_unbranded = ["watch", "movement", "dial", "lot", "estate", "collection"]
-                        if not any(word in full_text for word in valid_unbranded):
-                            continue
                         
                     seller = item.get("seller", {})
                     url = item.get("itemWebUrl", "")
@@ -886,8 +868,8 @@ def start_sniper_bot():
                         print(f"Export Error: {e}")
                         
             except Exception as e:
-                print(f"API Error on {query} ({market}): {e}")
-                
+                print(f"API Error on bucket '{query[:40]}...' ({market}): {e}")
+
             time.sleep(get_smart_delay())
 
 if __name__ == "__main__":
