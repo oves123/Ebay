@@ -267,36 +267,9 @@ GLOBAL_MAX_PRICE_USD = 700.0
 # Strict age gate: Only notify & record listings posted in the last 30 minutes (real-time live snipes)
 MAX_SNIPE_AGE_MINUTES = 30
 
-# Brand-Specific Ceilings (Overrides the $700 Global Max)
-BRAND_LIMITS_USD = {
-    "rolex": 3500,
-    "patek": 5000,
-    "audemars": 5000,
-    "vacheron": 4000,
-    "iwc": 1500,
-    "jaeger-lecoultre": 2000,
-    "jlc": 2000,
-    "breguet": 2000,
-    "omega": 1200,
-    "tudor": 1200,
-    "cartier": 1200,
-    "heuer": 1000,
-    "zenith": 1500,
-    "breitling": 1000,
-    "girard-perregaux": 800,
-    "longines": 400,
-    "wittnauer": 300,
-    "movado": 800,
-    "blancpain": 1000,
-    "enicar": 300,
-    "bulova": 250,
-    "tissot": 200,
-    "seiko": 200,
-    "hamilton": 200,
-    "valjoux": 400,
-    "lemania": 300,
-    "universal geneve": 800,
-}
+# NOTE: BRAND_LIMITS_USD is kept for reference but the global $50-$700 cap is now strictly enforced.
+# No brand-specific overrides — ALL listings must be between $50 and $700 USD.
+
 
 # -------------------------------------------------------------------------
 # OPTION 1: BOOLEAN GROUPED QUERIES
@@ -678,16 +651,8 @@ def start_sniper_bot():
                             if not any(word in full_text for word in generic_ok):
                                 continue
 
-                    # 4. Global Price Limit
-                    if price_usd < GLOBAL_MIN_PRICE_USD:
-                        continue
-
-                    # 4b. Brand-Specific Ceiling
-                    applicable_max_usd = GLOBAL_MAX_PRICE_USD
-                    if triggered_brand and triggered_brand in BRAND_LIMITS_USD:
-                        applicable_max_usd = BRAND_LIMITS_USD[triggered_brand]
-
-                    if price_usd > applicable_max_usd:
+                    # 4. Strict Global Price Limit: $50 - $700 for ALL brands, no exceptions
+                    if price_usd < GLOBAL_MIN_PRICE_USD or price_usd > GLOBAL_MAX_PRICE_USD:
                         continue
 
                     # 5. Lot-bucket validation & Hidden Gem detection
