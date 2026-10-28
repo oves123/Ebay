@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "c:\\Users\\Oves\\Desktop\\Ebay\\ebay-mcp\\.venv\\Scripts\\python.exe",
+  "python.pythonPath": "c:\\Users\\Oves\\Desktop\\Ebay\\ebay-mcp\\.venv\\Scripts\\python.exe",
+  "python.analysis.extraPaths": [
+    "c:\\Users\\Oves\\Desktop\\Ebay\\ebay-mcp\\src"
+  ],
+  "pyrefly.pythonInterpreter": "c:\\Users\\Oves\\Desktop\\Ebay\\ebay-mcp\\.venv\\Scripts\\python.exe",
+  "pyrefly.venvPath": "c:\\Users\\Oves\\Desktop\\Ebay\\ebay-mcp\\.venv"
+}

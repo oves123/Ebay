@@ -1,5 +1,23 @@
 [
     {
+        "Query": "(Seiko, Grand Seiko, King Seiko, Enicar, Mido, Favre-Leuba, Elgin, Girard-Perregaux)",
+        "Region": "EBAY_US",
+        "Title": "Vintage Seiko 7N82-0809 Women Date Watch 28mm New Battery Works Runs Black Dial",
+        "Price": 59,
+        "TimeLeft": "New Listing",
+        "TimeListed": "4m ago",
+        "Gender": "Womens",
+        "BuyingOptions": "Buy It Now, Accepts Offers",
+        "Condition": "Pre-owned - Good",
+        "Health": "\u001b[92m[\ud83d\udfe2 RUNNING]\u001b[0m",
+        "ScrapValue": "N/A",
+        "Contacts": "None",
+        "Seller": "rmwholesale",
+        "Link": "https://www.ebay.com/itm/377603371110?_skw=%28Seiko%2C+Grand+Seiko%2C+King+Seiko%2C+Enicar%2C+Mido%2C+Favre-Leuba%2C+Elgin%2C+Girard-Perregaux%29&hash=item57eaea3066:g:bg8AAeSwyIJq4dj1",
+        "ImageUrl": "https://i.ebayimg.com/images/g/bg8AAeSwyIJq4dj1/s-l225.jpg",
+        "Timestamp": "16:51:12"
+    },
+    {
         "Query": "Vintage watch",
         "Region": "EBAY_US",
         "Title": "Casio Vintage Women\u2019s Mini LA670 Digital Silver Tone Watch",
@@ -17980,23 +17998,5 @@
         "Link": "https://www.ebay.com/itm/237046048447?_skw=Breguet&hash=item37310ba6bf:g:iqoAAeSwhVlqmRkL",
         "ImageUrl": "https://i.ebayimg.com/images/g/iqoAAeSwhVlqmRkL/s-l225.jpg",
         "Timestamp": "15:47:30"
-    },
-    {
-        "Query": "Breguet",
-        "Region": "EBAY_US",
-        "Title": "Seiko Quartz Vintage Men\u2019s Watch Two-Tone Breguet Dial 7431-5010 (New Battery)",
-        "Price": 300,
-        "TimeLeft": "New Listing",
-        "TimeListed": "Sep 06, 2026",
-        "Gender": "Mens",
-        "BuyingOptions": "Buy It Now, Accepts Offers",
-        "Condition": "Pre-owned - Good",
-        "Health": "[\u26aa UNKNOWN STATUS]",
-        "ScrapValue": "N/A",
-        "Contacts": "None",
-        "Seller": "seikohunter",
-        "Link": "https://www.ebay.com/itm/800623189812?_skw=Breguet&hash=itemba68dc5f34:g:8uMAAeSw-JRqne4h",
-        "ImageUrl": "https://i.ebayimg.com/images/g/8uMAAeSw-JRqne4h/s-l225.jpg",
-        "Timestamp": "15:47:29"
     }
 ]
