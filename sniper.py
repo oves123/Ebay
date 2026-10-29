@@ -211,22 +211,22 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
                 renotify=False
             ),
             data={
-                "url": str(url),
-                "link": str(launcher_url),
-                "launcher_url": str(launcher_url),
+                "url": url,
+                "link": launcher_url,
+                "launcher_url": launcher_url,
                 "price": str(price_usd),
                 "title": clean_title,
-                "item_id": str(ebay_item_id)
+                "item_id": ebay_item_id
             }
         )
 
         data_payload = {
-            "url": str(url),
-            "link": str(launcher_url),
-            "launcher_url": str(launcher_url),
+            "url": url,
+            "link": launcher_url,
+            "launcher_url": launcher_url,
             "price": str(price_usd),
-            "title": str(clean_title)[:80],
-            "item_id": str(ebay_item_id)
+            "title": clean_title[:80],
+            "item_id": ebay_item_id
         }
 
         if tokens:
