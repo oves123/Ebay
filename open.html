@@ -2,18 +2,38 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Opening Listing...</title>
+  <title>Opening eBay App...</title>
   <script>
     (function() {
       var params = new URLSearchParams(window.location.search);
-      var itemId = params.get('id');
-      var rawUrl = params.get('url') || '';
+      var itemId = params.get('id') || params.get('item_id');
+      var rawUrl = params.get('url') || params.get('go') || '';
       if (!itemId && rawUrl) {
         var match = rawUrl.match(/\/itm\/(?:[^\/]+\/)?(\d{9,14})/);
         if (match) itemId = match[1];
       }
-      var target = itemId ? ('https://www.ebay.com/itm/' + itemId) : (rawUrl || 'https://www.ebay.com');
-      window.location.replace(target);
+      
+      if (itemId) {
+        var ua = navigator.userAgent || '';
+        var isAndroid = /android/i.test(ua);
+        var webFallback = 'https://www.ebay.com/itm/' + itemId;
+
+        if (isAndroid) {
+          window.location.href = 'intent://www.ebay.com/itm/' + itemId + '#Intent;scheme=https;package=com.ebay.mobile;S.browser_fallback_url=' + encodeURIComponent(webFallback) + ';end';
+        } else {
+          // iOS: official modern deep link for eBay app item view
+          window.location.href = 'ebay://com.ebay.mobile/ebay/link/?nav=item.view&id=' + itemId;
+          setTimeout(function() {
+            if (!document.hidden) {
+              window.location.replace(webFallback);
+            }
+          }, 2200);
+        }
+      } else if (rawUrl) {
+        window.location.replace(rawUrl);
+      } else {
+        window.location.replace('https://www.ebay.com');
+      }
     })();
   </script>
 </head>
