@@ -272,17 +272,12 @@ MAX_SNIPE_AGE_MINUTES = 30
 
 
 # -------------------------------------------------------------------------
-# OPTIMIZED 6-BUCKET SEARCH PLAN
-# 8 buckets (wasteful) --> 6 focused buckets (25% fewer API calls)
-# Removed: Rolex, Tudor, Cartier, Breitling, Zenith, Heuer, Patek, AP,
-#          Vacheron, IWC, JLC, Breguet, Blancpain  (all mostly >$700)
-# Kept:    Omega (own bucket), mid-range vintage, Japanese, misspellings,
-#          vintage styles, gold/estate/lots combined
-# -------------------------------------------------------------------------
-# API Budget (6 buckets, new delays):
-#   Peak    (15s delay): 6x per ~90s = ~40 cycles/hr = 240 calls/hr x 10h = 2,400
-#   Off-peak (60s delay): 6x per ~6min = ~10 cycles/hr =  60 calls/hr x 14h =   840
-#   Total per day: ~3,240  (well within 5,000 limit)
+# OPTIMIZED 5-BUCKET SEARCH PLAN
+# 6 buckets --> 5 focused buckets (misspellings bucket removed)
+# API Budget (5 buckets):
+#   Peak    (15s delay): 5x per ~75s = ~48 cycles/hr = 240 calls/hr x 10h = 2,400
+#   Off-peak (60s delay): 5x per ~5min = ~12 cycles/hr =  60 calls/hr x 14h =   840
+#   Total per day: ~2,700  (well within 5,000 limit, ~46% buffer)
 # -------------------------------------------------------------------------
 # Each tuple: (query_string, marketplace, is_lot_bucket)
 TARGETS = [
@@ -295,10 +290,7 @@ TARGETS = [
     # Bucket 3 - Japanese & Cult Brands (strong $50-$700 market)
     ("(Seiko, Grand Seiko, King Seiko, Enicar, Mido, Favre-Leuba, Elgin, Girard-Perregaux)", "EBAY_US", False),
 
-    # Bucket 4 - Misspellings & Hidden Gems (catch undervalued listings)
-    ("(Omiga, Omaga, Rollex, Rolleks, Breightling, Pateck, Longiens, Hamiton)", "EBAY_US", False),
-
-    # Bucket 5 - Vintage Styles & Movements (broad category sweep)
+    # Bucket 4 - Vintage Styles & Movements (broad category sweep)
     ("(vintage automatic watch, vintage mechanical watch, vintage diver, vintage chronograph, vintage military watch, Swiss vintage watch)", "EBAY_US", False),
 
     # Bucket 6 - Gold, Estate & Lots COMBINED (best ROI bucket)
