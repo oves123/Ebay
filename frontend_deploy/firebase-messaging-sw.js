@@ -52,33 +52,47 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(title, notificationOptions);
 });
 
-// Handle notification click to open the eBay listing URL directly
+// Handle notification click to open the eBay listing in the native eBay App on iOS and Android
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const data = event.notification.data || {};
-  let targetUrl = data.url ||
+  let targetUrl = data.launcher_url ||
                   data.link ||
+                  data.url ||
                   data.FCM_MSG?.fcmOptions?.link ||
                   data.FCM_MSG?.notification?.click_action ||
-                  data.FCM_MSG?.data?.url ||
+                  data.FCM_MSG?.data?.launcher_url ||
                   data.FCM_MSG?.data?.link ||
+                  data.FCM_MSG?.data?.url ||
                   'https://ebay-1e4.pages.dev/';
 
-  console.log('[firebase-messaging-sw.js] Notification clicked! Opening:', targetUrl);
+  // Extract clean eBay item ID
+  let itemId = data.item_id ||
+               data.id ||
+               data.FCM_MSG?.data?.item_id ||
+               (targetUrl.match(/\/itm\/(?:[^\/]+\/)?(\d{9,14})/)?.[1]) ||
+               (targetUrl.match(/id=(\d{9,14})/)?.[1]);
+
+  let launchUrl = targetUrl;
+  if (itemId && !targetUrl.includes('open.html')) {
+    launchUrl = `https://ebay-1e4.pages.dev/open.html?id=${itemId}&url=${encodeURIComponent(targetUrl)}`;
+  }
+
+  console.log('[firebase-messaging-sw.js] Notification clicked! Launching:', launchUrl);
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // If a window is already open, navigate and focus it
+      // If a window is already open on our domain, navigate it
       for (let client of windowClients) {
-        if ('focus' in client && 'navigate' in client) {
-          client.navigate(targetUrl);
+        if ('focus' in client && 'navigate' in client && client.url.includes('ebay-1e4.pages.dev')) {
+          client.navigate(launchUrl);
           return client.focus();
         }
       }
       // Otherwise open a new window
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(launchUrl);
       }
     })
   );

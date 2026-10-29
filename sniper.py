@@ -155,10 +155,14 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
     try:
         from firebase_admin import messaging
         
-        # Extract clean eBay item ID for OS-level deduplication tag
-        item_id_match = re.search(r'/itm/(\d+)', url)
+        # Extract clean eBay item ID for OS-level deduplication tag & native app deep link
+        item_id_match = re.search(r'/itm/(?:[^/]+/)?(\d{9,14})', url) or re.search(r'(\d{9,14})', url)
         ebay_item_id = item_id_match.group(1) if item_id_match else str(abs(hash(url)))
         notification_tag = f"ebay-deal-{ebay_item_id}"
+
+        # Build direct App Launcher URL for iOS & Android
+        import urllib.parse
+        launcher_url = f"https://ebay-1e4.pages.dev/open.html?id={ebay_item_id}&url={urllib.parse.quote(url, safe='')}"
 
         # 1. Clean Title and Brand/Model
         clean_title = re.sub(r'\[.*?\]', '', title).strip()
@@ -193,10 +197,10 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
 
         tokens = get_fcm_tokens()
 
-        # Web Push Configuration for Mobile Safari, Chrome & Android
+        # Web Push Configuration for Mobile Safari, Chrome & Android (opens native eBay App)
         webpush_config = messaging.WebpushConfig(
             fcm_options=messaging.WebpushFCMOptions(
-                link=url
+                link=launcher_url
             ),
             notification=messaging.WebpushNotification(
                 title=notification_title,
@@ -208,16 +212,18 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
             ),
             data={
                 "url": str(url),
-                "link": str(url),
+                "link": str(launcher_url),
+                "launcher_url": str(launcher_url),
                 "price": str(price_usd),
                 "title": clean_title,
-                "item_id": ebay_item_id
+                "item_id": str(ebay_item_id)
             }
         )
 
         data_payload = {
             "url": str(url),
-            "link": str(url),
+            "link": str(launcher_url),
+            "launcher_url": str(launcher_url),
             "price": str(price_usd),
             "title": str(clean_title)[:80],
             "item_id": str(ebay_item_id)
@@ -769,8 +775,11 @@ def start_sniper_bot():
                             
                         # 1. TRIGGER INSTANT MOBILE PUSH NOTIFICATION IMMEDIATELY
                         push_status = "Not sent"
-                        item_id_match = re.search(r'/itm/(\d+)', url)
+                        item_id_match = re.search(r'/itm/(?:[^/]+/)?(\d{9,14})', url) or re.search(r'(\d{9,14})', url)
                         item_id_key = item_id_match.group(1) if item_id_match else url
+
+                        if len(seen_notifications) > 20000:
+                            seen_notifications.clear()
 
                         if item_id_key in seen_notifications and not is_price_drop:
                             push_status = f"Deduplicated: Already notified item {item_id_key}"
