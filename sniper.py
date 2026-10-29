@@ -272,36 +272,37 @@ MAX_SNIPE_AGE_MINUTES = 30
 
 
 # -------------------------------------------------------------------------
-# OPTION 1: BOOLEAN GROUPED QUERIES
-# 55 individual calls --> 8 grouped boolean buckets
-# Full scan time: ~16 minutes --> ~2 minutes
-# API usage: 55 calls/cycle --> 8 calls/cycle (stays well within 5,000/day)
+# OPTIMIZED 6-BUCKET SEARCH PLAN
+# 8 buckets (wasteful) --> 6 focused buckets (25% fewer API calls)
+# Removed: Rolex, Tudor, Cartier, Breitling, Zenith, Heuer, Patek, AP,
+#          Vacheron, IWC, JLC, Breguet, Blancpain  (all mostly >$700)
+# Kept:    Omega (own bucket), mid-range vintage, Japanese, misspellings,
+#          vintage styles, gold/estate/lots combined
+# -------------------------------------------------------------------------
+# API Budget (6 buckets, new delays):
+#   Peak    (15s delay): 6x per ~90s = ~40 cycles/hr = 240 calls/hr x 10h = 2,400
+#   Off-peak (60s delay): 6x per ~6min = ~10 cycles/hr =  60 calls/hr x 14h =   840
+#   Total per day: ~3,240  (well within 5,000 limit)
 # -------------------------------------------------------------------------
 # Each tuple: (query_string, marketplace, is_lot_bucket)
 TARGETS = [
-    # Bucket 1 - Luxury Tier 1 (Rolex, Omega, Tudor, Cartier, Breitling, Zenith, Heuer)
-    ("(Rolex, Omega, Tudor, Cartier, Breitling, Zenith, Heuer, TAG Heuer)", "EBAY_US", False),
+    # Bucket 1 - OMEGA ONLY (dedicated slot - your primary target)
+    ("(Omega Speedmaster, Omega Seamaster, Omega Constellation, Omega De Ville, Omega Geneve, Omega Dynamic, Omega Railmaster)", "EBAY_US", False),
 
-    # Bucket 2 - Haute Horlogerie (Patek, AP, Vacheron, IWC, JLC, Breguet, Blancpain)
-    ("(Patek Philippe, Audemars Piguet, Vacheron Constantin, IWC, Jaeger-LeCoultre, Breguet, Blancpain)", "EBAY_US", False),
+    # Bucket 2 - Mid-Range Vintage Collectibles ($50-$700 sweet spot)
+    ("(Longines, Universal Geneve, Hamilton, Bulova, Tissot, Wittnauer, Movado, Zodiac)", "EBAY_US", False),
 
-    # Bucket 3 - Vintage Collectibles (Longines, Universal Geneve, Hamilton, Bulova, Tissot, Movado, Zodiac)
-    ("(Longines, Universal Geneve, Hamilton, Bulova, Tissot, Wittnauer, Movado, Zodiac, Wittnauer)", "EBAY_US", False),
-
-    # Bucket 4 - Japanese & Cult Brands (Seiko, Grand Seiko, Enicar, Mido, Favre-Leuba, Elgin)
+    # Bucket 3 - Japanese & Cult Brands (strong $50-$700 market)
     ("(Seiko, Grand Seiko, King Seiko, Enicar, Mido, Favre-Leuba, Elgin, Girard-Perregaux)", "EBAY_US", False),
 
-    # Bucket 5 - Misspellings & Hidden Gems (Omiga, Rollex, Breightling)
-    ("(Omiga, Rollex, Breightling, Pateck, Omaga, Rolleks)", "EBAY_US", False),
+    # Bucket 4 - Misspellings & Hidden Gems (catch undervalued listings)
+    ("(Omiga, Omaga, Rollex, Rolleks, Breightling, Pateck, Longiens, Hamiton)", "EBAY_US", False),
 
-    # Bucket 6 - Vintage Styles & Movements
+    # Bucket 5 - Vintage Styles & Movements (broad category sweep)
     ("(vintage automatic watch, vintage mechanical watch, vintage diver, vintage chronograph, vintage military watch, Swiss vintage watch)", "EBAY_US", False),
 
-    # Bucket 7 - Gold & Estate Single Watches
-    ("(14k vintage watch, 18k vintage watch, solid gold vintage watch, estate watch, antique watch, mens vintage watch)", "EBAY_US", False),
-
-    # Bucket 8 - Lots, Junk Drawers, Watchmaker Estates (no category filter)
-    ("(watchmaker lot, vintage watch lot, estate watch lot, drawer of old watches, junk drawer watch, old watches for parts)", "EBAY_US", True),
+    # Bucket 6 - Gold, Estate & Lots COMBINED (best ROI bucket)
+    ("(14k vintage watch, 18k vintage watch, solid gold vintage watch, estate watch, antique watch, watchmaker lot, vintage watch lot, junk drawer watch, estate watch lot)", "EBAY_US", True),
 ]
 
 # Crude Currency Conversion to USD for filtering UK/German listings
@@ -364,37 +365,39 @@ LADIES_KEYWORDS = ["ladies", "womens", "women"]
 
 # -------------------------------------------------------------------------
 # THE MODEL-LOCK SYSTEM
+# Only brands we actually target under $700 are listed here.
+# Luxury brands removed from buckets are kept ONLY for lot-hidden-gem detection.
 # -------------------------------------------------------------------------
 GENERIC_VALIDATORS = ["watch", "vintage", "mens", "womens", "ladies", "lot", "estate"]
 
 VALID_MODELS = {
-    "rolex": ["oyster", "datejust", "day-date", "air-king", "explorer", "submariner", "gmt-master", "daytona", "milgauss", "sea-dweller", "oysterquartz", "precision", "cellini", "bubbleback"],
-    "patek philippe": ["calatrava", "nautilus", "aquanaut", "gondolo", "ellipse", "golden ellipse", "complications"],
-    "patek": ["calatrava", "nautilus", "aquanaut", "gondolo", "ellipse", "golden ellipse", "complications"],
-    "audemars piguet": ["royal oak", "millenary", "jules", "code 11.59", "offshore"],
-    "audemars": ["royal oak", "millenary", "jules", "code 11.59", "offshore"],
-    "vacheron": ["overseas", "patrimony", "traditionnelle", "historiques", "fiftysix", "malte"],
-    "omega": ["speedmaster", "seamaster", "constellation", "genève", "geneve", "de ville", "dynamic", "railmaster", "ranchero", "flightmaster", "chronostop", "memomatic", "cosmic"],
-    "cartier": ["tank", "américaine", "française", "must de cartier", "santos", "panthère", "baignoire", "crash", "tortue", "cintrée"],
-    "jaeger-lecoultre": ["reverso", "memovox", "geophysic", "futurematic", "atmos", "master", "polaris", "duoplan", "powermatic", "perpetual"],
-    "jlc": ["reverso", "memovox", "geophysic", "futurematic", "atmos", "master", "polaris", "duoplan", "powermatic", "perpetual"],
-    "iwc": ["portugieser", "ingenieur", "mark", "pilot", "aquatimer", "da vinci", "portofino", "yacht club"],
-    "breguet": ["type xx", "type xxi", "classique", "marine", "tourbillon", "repeater"],
+    # PRIMARY TARGET
+    "omega": ["speedmaster", "seamaster", "constellation", "genève", "geneve", "de ville", "dynamic", "railmaster", "ranchero", "flightmaster", "chronostop", "memomatic", "cosmic", "automatic", "quartz"],
+
+    # MID-RANGE VINTAGE (Bucket 2)
     "longines": ["conquest", "flagship", "ultra-chron", "admiral", "record", "legend diver", "skin diver", "dolcevita", "flyback"],
     "universal geneve": ["polerouter", "compax", "tri-compax", "uni-compax", "aero-compax", "space-compax", "white shadow", "golden shadow", "microtor", "cabriolet"],
-    "girard-perregaux": ["gyromatic", "chronometer hf", "laureato", "ferrari"],
+    "hamilton": ["ventura", "electric", "khaki", "railroad", "watch"],
+    "bulova": ["accutron", "caravelle", "spaceview", "snorkel", "lone eagle", "sea king", "day-date", "watch"],
+    "tissot": ["seastar", "navigator", "visodate", "le locle", "pr50", "pr100", "watch"],
+    "wittnauer": ["professional", "geneve", "electro-chron", "watch"],
+    "movado": ["museum", "kingmatic", "sub sea", "triple calendar", "polyplan", "ermeto"],
+    "zodiac": ["sea wolf", "aerospace", "super seawolf", "astrographic", "olympos", "chronograph"],
+
+    # JAPANESE & CULT (Bucket 3)
     "seiko": ["grand seiko", "king seiko", "lord matic", "seiko 5", "presmatic", "lord marvel", "marvel", "crown", "sportsmatic", "bell-matic", "62mas", "6105", "6159", "6215", "6138", "6139", "5717", "5719", "bullhead", "pogue", "6306", "6309", "kakume", "ufo", "willard", "turtle", "alpinist"],
-    "hamilton": ["ventura", "electric", "khaki", "railroad"],
-    "elgin": ["railroad", "pocket"],
-    "mido": ["commander", "ocean star", "multifort", "powerwind", "datoday"],
     "enicar": ["sherpa", "super dive", "graph", "star jewels", "ultrasonic"],
+    "mido": ["commander", "ocean star", "multifort", "powerwind", "datoday"],
     "favre-leuba": ["raider", "bathy", "sea raider", "deep blue"],
-    "record": ["datofix", "calendomatic"],
-    "wittnauer": ["professional", "geneve", "electro-chron"],
-    "tudor": ["submariner", "ranger", "snowflake", "oyster prince", "pelagos", "black bay", "chronograph"],
-    "breitling": ["navitimer", "chronomat", "top time", "premier", "superocean"],
+    "elgin": ["railroad", "pocket", "watch"],
+    "girard-perregaux": ["gyromatic", "chronometer hf", "laureato", "watch"],
+
+    # KEPT FOR LOT/HIDDEN GEM DETECTION ONLY (not in search buckets)
+    "rolex": ["oyster", "datejust", "day-date", "air-king", "explorer", "submariner", "gmt-master", "daytona", "milgauss", "sea-dweller", "precision", "bubbleback"],
+    "tudor": ["submariner", "ranger", "snowflake", "oyster prince", "pelagos", "black bay"],
+    "cartier": ["tank", "santos", "panthère", "must de cartier"],
+    "patek": ["calatrava", "nautilus", "aquanaut"],
     "zenith": ["el primero", "defy", "captain", "elite"],
-    "zodiac": ["sea wolf", "aerospace", "super seawolf", "astrographic", "olympos", "chronograph"]
 }
 
 def is_model_locked(full_text, brand):
@@ -493,28 +496,28 @@ def check_seller_safety(seller):
     return f" (Feedback: {score})"
 
 def get_smart_delay():
-    """Smart delay between bucket queries to stay within 5,000 calls/day budget.
-    8 buckets per cycle. Budget math:
-      Peak (active hours): 8 buckets x 7s delay = 56s/cycle = ~103 cycles/10h = ~824 calls
-      Off-peak:            8 buckets x 30s delay = 4min/cycle =  ~15 cycles/h  = ~120 calls/h
-    Total well under 5,000/day.
+    """Conservative delay to stay safely under 5,000 API calls/day.
+    6 buckets per cycle. Budget math:
+      Peak    (15s delay): 6 x 15s = 90s/cycle -> ~40 cycles/hr -> 240 calls/hr x 10h = 2,400
+      Off-peak (60s delay): 6 x 60s = 6min/cycle -> ~10 cycles/hr -> 60 calls/hr  x 14h =   840
+      TOTAL: ~3,240/day  (well within 5,000 limit, ~35% buffer)
     """
     current_hour = datetime.now(timezone.utc).hour
-    # US peak listing hours (11:00 AM - 11:00 PM EST = 16:00 - 04:00 UTC)
+    # US peak listing hours: 11am-11pm EST = 16:00-04:00 UTC
     if 16 <= current_hour <= 23 or 0 <= current_hour <= 4:
-        return 7  # Peak: scan every ~56 seconds per full cycle
-    return 20    # Off-peak: scan every ~2.7 minutes per full cycle
+        return 15  # Peak: scan full cycle every ~90 seconds
+    return 60      # Off-peak: scan full cycle every ~6 minutes
 
 # -------------------------------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------------------------------
 def start_sniper_bot():
-    print("========================================================")
-    print("= EBAY 24/7 WATCH SNIPER (V6 - BOOLEAN GROUPED QUERIES) =")
-    print("========================================================")
-    print(f"Monitoring Global Price Range: ${GLOBAL_MIN_PRICE_USD} - ${GLOBAL_MAX_PRICE_USD} USD")
-    print(f"Targeting: {len(TARGETS)} Boolean Grouped Buckets (was 55 individual calls!)")
-    print("Full scan cycle: ~2 minutes | API budget: well under 5,000/day")
+    print("======================================================")
+    print("= EBAY 24/7 WATCH SNIPER (V7 - OPTIMIZED 6 BUCKETS) =")
+    print("======================================================")
+    print(f"Monitoring: ${GLOBAL_MIN_PRICE_USD} - ${GLOBAL_MAX_PRICE_USD} USD | {len(TARGETS)} Focused Buckets")
+    print("API budget: ~3,240 calls/day (35% buffer under 5,000 limit)")
+    print("Primary target: Omega | Also: Longines, Seiko, Hamilton, Bulova + Vintage/Estate/Lots")
     print("Waiting for new listings... (Press Ctrl+C to stop)\n")
     
     client = EbayBrowseClient(load_config())
