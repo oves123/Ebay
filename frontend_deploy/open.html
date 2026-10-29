@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Opening eBay App...</title>
+  <title>Opening eBay Listing...</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -104,12 +104,12 @@
   <div class="card">
     <div class="icon-wrap">⚡</div>
     <div class="spinner"></div>
-    <h1>Opening in eBay App</h1>
-    <p id="status-desc">Launching the eBay app directly to this listing...</p>
+    <h1>Opening Item in eBay App</h1>
+    <p id="status-desc">Loading listing details directly in the eBay app...</p>
     
     <div class="btn-group">
       <a id="app-launch-btn" class="btn btn-primary" href="#">
-        📱 Open in eBay App
+        📱 View Listing in eBay App
       </a>
       <a id="web-fallback-btn" class="btn btn-secondary" href="#">
         🌐 Open in Web Browser
@@ -121,29 +121,27 @@
     (function() {
       var params = new URLSearchParams(window.location.search);
       var itemId = params.get('id');
-      var webUrl = params.get('url');
+      var rawUrl = params.get('url') || '';
 
-      if (!itemId && webUrl) {
-        var match = webUrl.match(/\/itm\/(?:[^\/]+\/)?(\d{9,14})/);
+      if (!itemId && rawUrl) {
+        var match = rawUrl.match(/\/itm\/(?:[^\/]+\/)?(\d{9,14})/);
         if (match) itemId = match[1];
       }
 
-      if (!webUrl) {
-        webUrl = itemId ? ('https://www.ebay.com/itm/' + itemId) : 'https://www.ebay.com';
-      }
+      var cleanWebUrl = itemId ? ('https://www.ebay.com/itm/' + itemId) : (rawUrl || 'https://www.ebay.com');
 
       var ua = navigator.userAgent || navigator.vendor || window.opera || '';
       var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       var isAndroid = /android/i.test(ua);
 
-      var appUrl = webUrl;
+      var appUrl = cleanWebUrl;
       if (itemId) {
         if (isAndroid) {
-          // Android Intent: forces com.ebay.mobile app package with automatic web fallback
-          appUrl = 'intent://www.ebay.com/itm/' + itemId + '#Intent;scheme=https;package=com.ebay.mobile;S.browser_fallback_url=' + encodeURIComponent(webUrl) + ';end';
+          // Android Intent: specifies package com.ebay.mobile and exact item path
+          appUrl = 'intent://www.ebay.com/itm/' + itemId + '#Intent;scheme=https;package=com.ebay.mobile;S.browser_fallback_url=' + encodeURIComponent(cleanWebUrl) + ';end';
         } else if (isIOS) {
-          // iOS URL scheme: recognized by eBay iOS app
-          appUrl = 'ebay://itm/' + itemId;
+          // iOS URL scheme: uses launch?itm= to navigate directly into item listing page
+          appUrl = 'ebay://launch?itm=' + itemId;
         }
       }
 
@@ -152,38 +150,31 @@
       var statusDesc = document.getElementById('status-desc');
 
       appBtn.href = appUrl;
-      webBtn.href = webUrl;
+      webBtn.href = cleanWebUrl;
 
-      // Handle direct click on button
+      // When clicked directly, trigger app launch
       appBtn.addEventListener('click', function(e) {
         if (isIOS) {
-          setTimeout(function() {
-            if (!document.hidden) {
-              window.location.href = webUrl;
-            }
-          }, 1500);
+          window.location.href = 'ebay://launch?itm=' + itemId;
         }
       });
 
-      // Automatic launch logic
+      // Automatic launch on page load
       if (isIOS) {
-        // On iOS, navigate to the custom scheme
+        // Execute direct item launch in eBay app
         window.location.href = appUrl;
         setTimeout(function() {
-          statusDesc.innerText = "If the eBay app didn't open automatically, tap the button below:";
+          statusDesc.innerText = "If the listing didn't open automatically, tap below:";
         }, 1200);
       } else if (isAndroid) {
-        // On Android, launch via Intent
         window.location.href = appUrl;
         setTimeout(function() {
-          statusDesc.innerText = "If the eBay app didn't open automatically, tap the button below:";
+          statusDesc.innerText = "If the listing didn't open automatically, tap below:";
         }, 1200);
       } else {
-        // Desktop PC / Mac: redirect directly to the eBay website
-        window.location.replace(webUrl);
+        window.location.replace(cleanWebUrl);
       }
     })();
   </script>
 </body>
 </html>
-

@@ -160,9 +160,10 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         ebay_item_id = item_id_match.group(1) if item_id_match else str(abs(hash(url)))
         notification_tag = f"ebay-deal-{ebay_item_id}"
 
-        # Build direct App Launcher URL for iOS & Android
+        # Build direct App Launcher URL for iOS & Android (pointing directly to clean item listing)
         import urllib.parse
-        launcher_url = f"https://ebay-1e4.pages.dev/open.html?id={ebay_item_id}&url={urllib.parse.quote(url, safe='')}"
+        clean_item_url = f"https://www.ebay.com/itm/{ebay_item_id}" if item_id_match else url
+        launcher_url = f"https://ebay-1e4.pages.dev/open.html?id={ebay_item_id}&url={urllib.parse.quote(clean_item_url, safe='')}"
 
         # 1. Clean Title and Brand/Model
         clean_title = re.sub(r'\[.*?\]', '', title).strip()
