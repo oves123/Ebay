@@ -272,28 +272,36 @@ MAX_SNIPE_AGE_MINUTES = 30
 
 
 # -------------------------------------------------------------------------
-# OPTIMIZED 5-BUCKET SEARCH PLAN
-# 6 buckets --> 5 focused buckets (misspellings bucket removed)
-# API Budget (5 buckets):
-#   Peak    (15s delay): 5x per ~75s = ~48 cycles/hr = 240 calls/hr x 10h = 2,400
-#   Off-peak (60s delay): 5x per ~5min = ~12 cycles/hr =  60 calls/hr x 14h =   840
-#   Total per day: ~2,700  (well within 5,000 limit, ~46% buffer)
+# PRIORITY FAST-LANE SYSTEM (Option 2)
+# Omega scanned 3x per cycle for maximum speed, others scanned once
+# Pattern: Omega -> B2 -> Omega -> B3 -> Omega -> B4 -> B5 -> repeat
+# API Budget (7 entries, 12s peak / 60s off-peak):
+#   Peak    (12s delay): 7x per ~84s  = ~43 cycles/hr = 300 calls/hr x 10h = 3,000
+#   Off-peak (60s delay): 7x per ~7min = ~8.5 cycles/hr = 60 calls/hr  x 14h =   840
+#   Total per day: ~3,840  (well within 5,000 limit, ~23% buffer)
+#   Omega scan frequency: every ~24 seconds (was 75 seconds before)
 # -------------------------------------------------------------------------
 # Each tuple: (query_string, marketplace, is_lot_bucket)
 TARGETS = [
-    # Bucket 1 - OMEGA ONLY (dedicated slot - your primary target)
+    # 🚀 OMEGA PASS 1 of 3 — scanned first, immediately
     ("(Omega Speedmaster, Omega Seamaster, Omega Constellation, Omega De Ville, Omega Geneve, Omega Dynamic, Omega Railmaster)", "EBAY_US", False),
 
     # Bucket 2 - Mid-Range Vintage Collectibles ($50-$700 sweet spot)
     ("(Longines, Universal Geneve, Hamilton, Bulova, Tissot, Wittnauer, Movado, Zodiac)", "EBAY_US", False),
 
+    # 🚀 OMEGA PASS 2 of 3 — scanned again after Bucket 2 (~24s gap)
+    ("(Omega Speedmaster, Omega Seamaster, Omega Constellation, Omega De Ville, Omega Geneve, Omega Dynamic, Omega Railmaster)", "EBAY_US", False),
+
     # Bucket 3 - Japanese & Cult Brands (strong $50-$700 market)
     ("(Seiko, Grand Seiko, King Seiko, Enicar, Mido, Favre-Leuba, Elgin, Girard-Perregaux)", "EBAY_US", False),
+
+    # 🚀 OMEGA PASS 3 of 3 — scanned again after Bucket 3 (~24s gap)
+    ("(Omega Speedmaster, Omega Seamaster, Omega Constellation, Omega De Ville, Omega Geneve, Omega Dynamic, Omega Railmaster)", "EBAY_US", False),
 
     # Bucket 4 - Vintage Styles & Movements (broad category sweep)
     ("(vintage automatic watch, vintage mechanical watch, vintage diver, vintage chronograph, vintage military watch, Swiss vintage watch)", "EBAY_US", False),
 
-    # Bucket 6 - Gold, Estate & Lots COMBINED (best ROI bucket)
+    # Bucket 5 - Gold, Estate & Lots COMBINED (best ROI bucket)
     ("(14k vintage watch, 18k vintage watch, solid gold vintage watch, estate watch, antique watch, watchmaker lot, vintage watch lot, junk drawer watch, estate watch lot)", "EBAY_US", True),
 ]
 
@@ -488,29 +496,30 @@ def check_seller_safety(seller):
     return f" (Feedback: {score})"
 
 def get_smart_delay():
-    """Conservative delay to stay safely under 5,000 API calls/day.
-    6 buckets per cycle. Budget math:
-      Peak    (15s delay): 6 x 15s = 90s/cycle -> ~40 cycles/hr -> 240 calls/hr x 10h = 2,400
-      Off-peak (60s delay): 6 x 60s = 6min/cycle -> ~10 cycles/hr -> 60 calls/hr  x 14h =   840
-      TOTAL: ~3,240/day  (well within 5,000 limit, ~35% buffer)
+    """Priority fast-lane delays. Omega scanned 3x per cycle.
+    7 entries per cycle. Budget math:
+      Peak    (12s delay): 7 x 12s = 84s/cycle  -> ~43 cycles/hr -> 300 calls/hr x 10h = 3,000
+      Off-peak (60s delay): 7 x 60s = 7min/cycle ->  ~8.5 cycles/hr -> 60 calls/hr  x 14h =   840
+      TOTAL: ~3,840/day  (under 5,000 limit)
+      Omega scanned every ~24 seconds at peak (3x per cycle).
     """
     current_hour = datetime.now(timezone.utc).hour
     # US peak listing hours: 11am-11pm EST = 16:00-04:00 UTC
     if 16 <= current_hour <= 23 or 0 <= current_hour <= 4:
-        return 15  # Peak: scan full cycle every ~90 seconds
-    return 60      # Off-peak: scan full cycle every ~6 minutes
+        return 12  # Peak: Omega hit every ~24s (2 entries between each Omega)
+    return 60      # Off-peak: full cycle every ~7 minutes
 
 # -------------------------------------------------------------------------
 # MAIN LOOP
 # -------------------------------------------------------------------------
 def start_sniper_bot():
-    print("======================================================")
-    print("= EBAY 24/7 WATCH SNIPER (V7 - OPTIMIZED 6 BUCKETS) =")
-    print("======================================================")
-    print(f"Monitoring: ${GLOBAL_MIN_PRICE_USD} - ${GLOBAL_MAX_PRICE_USD} USD | {len(TARGETS)} Focused Buckets")
-    print("API budget: ~3,240 calls/day (35% buffer under 5,000 limit)")
-    print("Primary target: Omega | Also: Longines, Seiko, Hamilton, Bulova + Vintage/Estate/Lots")
-    print("Waiting for new listings... (Press Ctrl+C to stop)\n")
+    print("==========================================================")
+    print("= EBAY 24/7 WATCH SNIPER (V8 - OMEGA PRIORITY FAST LANE) =")
+    print("==========================================================")
+    print(f"Monitoring: ${GLOBAL_MIN_PRICE_USD} - ${GLOBAL_MAX_PRICE_USD} USD")
+    print("🚀 OMEGA scanned every ~24 seconds (3x per cycle - PRIORITY)")
+    print("API budget: ~3,840 calls/day (under 5,000 limit)")
+    print("Other brands scanned every ~84 seconds | Waiting for new listings...\n")
     
     client = EbayBrowseClient(load_config())
     
