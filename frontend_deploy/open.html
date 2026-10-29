@@ -1,180 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Opening eBay Listing...</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 24px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #0f172a;
-      color: #ffffff;
-      text-align: center;
-    }
-    .card {
-      background: #1e293b;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 32px 24px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    }
-    .icon-wrap {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 18px;
-      background: #3665f3;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      box-shadow: 0 8px 16px rgba(54, 101, 243, 0.3);
-    }
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(255, 255, 255, 0.15);
-      border-top-color: #3665f3;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    h1 {
-      font-size: 20px;
-      margin: 0 0 8px;
-      font-weight: 700;
-    }
-    p {
-      color: #94a3b8;
-      font-size: 14px;
-      margin: 0 0 24px;
-      line-height: 1.5;
-    }
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 14px 18px;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      border: none;
-    }
-    .btn-primary {
-      background: #3665f3;
-      color: #ffffff;
-      box-shadow: 0 4px 12px rgba(54, 101, 243, 0.4);
-    }
-    .btn-primary:active {
-      transform: scale(0.98);
-      background: #254edb;
-    }
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.08);
-      color: #cbd5e1;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    .btn-secondary:active {
-      background: rgba(255, 255, 255, 0.15);
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon-wrap">⚡</div>
-    <div class="spinner"></div>
-    <h1>Opening Item in eBay App</h1>
-    <p id="status-desc">Loading listing details directly in the eBay app...</p>
-    
-    <div class="btn-group">
-      <a id="app-launch-btn" class="btn btn-primary" href="#">
-        📱 View Listing in eBay App
-      </a>
-      <a id="web-fallback-btn" class="btn btn-secondary" href="#">
-        🌐 Open in Web Browser
-      </a>
-    </div>
-  </div>
-
+  <title>Opening Listing...</title>
   <script>
     (function() {
       var params = new URLSearchParams(window.location.search);
       var itemId = params.get('id');
       var rawUrl = params.get('url') || '';
-
       if (!itemId && rawUrl) {
         var match = rawUrl.match(/\/itm\/(?:[^\/]+\/)?(\d{9,14})/);
         if (match) itemId = match[1];
       }
-
-      var cleanWebUrl = itemId ? ('https://www.ebay.com/itm/' + itemId) : (rawUrl || 'https://www.ebay.com');
-
-      var ua = navigator.userAgent || navigator.vendor || window.opera || '';
-      var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      var isAndroid = /android/i.test(ua);
-
-      var appUrl = cleanWebUrl;
-      if (itemId) {
-        if (isAndroid) {
-          // Android Intent: specifies package com.ebay.mobile and exact item path
-          appUrl = 'intent://www.ebay.com/itm/' + itemId + '#Intent;scheme=https;package=com.ebay.mobile;S.browser_fallback_url=' + encodeURIComponent(cleanWebUrl) + ';end';
-        } else if (isIOS) {
-          // iOS URL scheme: uses launch?itm= to navigate directly into item listing page
-          appUrl = 'ebay://launch?itm=' + itemId;
-        }
-      }
-
-      var appBtn = document.getElementById('app-launch-btn');
-      var webBtn = document.getElementById('web-fallback-btn');
-      var statusDesc = document.getElementById('status-desc');
-
-      appBtn.href = appUrl;
-      webBtn.href = cleanWebUrl;
-
-      // When clicked directly, trigger app launch
-      appBtn.addEventListener('click', function(e) {
-        if (isIOS) {
-          window.location.href = 'ebay://launch?itm=' + itemId;
-        }
-      });
-
-      // Automatic launch on page load
-      if (isIOS) {
-        // Execute direct item launch in eBay app
-        window.location.href = appUrl;
-        setTimeout(function() {
-          statusDesc.innerText = "If the listing didn't open automatically, tap below:";
-        }, 1200);
-      } else if (isAndroid) {
-        window.location.href = appUrl;
-        setTimeout(function() {
-          statusDesc.innerText = "If the listing didn't open automatically, tap below:";
-        }, 1200);
-      } else {
-        window.location.replace(cleanWebUrl);
-      }
+      var target = itemId ? ('https://www.ebay.com/itm/' + itemId) : (rawUrl || 'https://www.ebay.com');
+      window.location.replace(target);
     })();
   </script>
-</body>
+</head>
+<body style="background:#0f172a;"></body>
 </html>

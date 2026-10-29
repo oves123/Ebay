@@ -160,10 +160,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         ebay_item_id = item_id_match.group(1) if item_id_match else str(abs(hash(url)))
         notification_tag = f"ebay-deal-{ebay_item_id}"
 
-        # Build direct App Launcher URL for iOS & Android (pointing directly to clean item listing)
-        import urllib.parse
+        # Build direct listing URL for immediate navigation (no intermediate screen)
         clean_item_url = f"https://www.ebay.com/itm/{ebay_item_id}" if item_id_match else url
-        launcher_url = f"https://ebay-1e4.pages.dev/open.html?id={ebay_item_id}&url={urllib.parse.quote(clean_item_url, safe='')}"
 
         # 1. Clean Title and Brand/Model
         clean_title = re.sub(r'\[.*?\]', '', title).strip()
@@ -198,10 +196,10 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
 
         tokens = get_fcm_tokens()
 
-        # Web Push Configuration for Mobile Safari, Chrome & Android (opens native eBay App)
+        # Web Push Configuration: opens exact eBay listing directly
         webpush_config = messaging.WebpushConfig(
             fcm_options=messaging.WebpushFCMOptions(
-                link=launcher_url
+                link=clean_item_url
             ),
             notification=messaging.WebpushNotification(
                 title=notification_title,
@@ -212,9 +210,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
                 renotify=False
             ),
             data={
-                "url": url,
-                "link": launcher_url,
-                "launcher_url": launcher_url,
+                "url": clean_item_url,
+                "link": clean_item_url,
                 "price": str(price_usd),
                 "title": clean_title,
                 "item_id": ebay_item_id
@@ -222,9 +219,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         )
 
         data_payload = {
-            "url": url,
-            "link": launcher_url,
-            "launcher_url": launcher_url,
+            "url": clean_item_url,
+            "link": clean_item_url,
             "price": str(price_usd),
             "title": clean_title[:80],
             "item_id": ebay_item_id
