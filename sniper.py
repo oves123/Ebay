@@ -162,6 +162,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
 
         # Build direct listing URL for immediate navigation (no intermediate screen)
         clean_item_url = f"https://www.ebay.com/itm/{ebay_item_id}" if item_id_match else url
+        import urllib.parse
+        pwa_redirect_url = f"https://ebay-1e4.pages.dev/?go={urllib.parse.quote(clean_item_url, safe='')}&item_id={ebay_item_id}"
 
         # 1. Clean Title and Brand/Model
         clean_title = re.sub(r'\[.*?\]', '', title).strip()
@@ -199,7 +201,7 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
         # Web Push Configuration: opens exact eBay listing directly
         webpush_config = messaging.WebpushConfig(
             fcm_options=messaging.WebpushFCMOptions(
-                link=clean_item_url
+                link=pwa_redirect_url
             ),
             notification=messaging.WebpushNotification(
                 title=notification_title,
@@ -211,7 +213,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
             ),
             data={
                 "url": clean_item_url,
-                "link": clean_item_url,
+                "link": pwa_redirect_url,
+                "go": clean_item_url,
                 "price": str(price_usd),
                 "title": clean_title,
                 "item_id": ebay_item_id
@@ -220,7 +223,8 @@ def send_mobile_push(title, price_usd, url, image_url=None, time_listed="Just no
 
         data_payload = {
             "url": clean_item_url,
-            "link": clean_item_url,
+            "link": pwa_redirect_url,
+            "go": clean_item_url,
             "price": str(price_usd),
             "title": clean_title[:80],
             "item_id": ebay_item_id

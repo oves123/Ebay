@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>eBay Arbitrage Engine</title>
+    <!-- Instant Notification Deep-Link Redirector to exact eBay watch listing -->
+    <script>
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var goUrl = params.get('go') || params.get('url');
+            var itemId = params.get('item_id') || params.get('id');
+            if (goUrl || itemId) {
+                var target = itemId ? ('https://www.ebay.com/itm/' + itemId) : goUrl;
+                if (target && target.startsWith('http')) {
+                    window.location.replace(target);
+                }
+            }
+        })();
+    </script>
     <!-- Firebase Cloud Messaging SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"></script>

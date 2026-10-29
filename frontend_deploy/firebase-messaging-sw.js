@@ -19,9 +19,6 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message: ', payload);
   
-  // DEDUPLICATION FIX: If payload.notification exists, the Firebase SDK / browser
-  // handles displaying the notification automatically. Calling self.registration.showNotification()
-  // creates a duplicate banner on mobile and desktop!
   if (payload.notification) {
     console.log('[firebase-messaging-sw.js] Handled automatically by Firebase SDK. Suppressing duplicate banner.');
     return;
@@ -30,9 +27,11 @@ messaging.onBackgroundMessage((payload) => {
   // Fallback for data-only push messages:
   const title = payload.data?.title || '⚡ New eBay Snipe Deal!';
   const body = payload.data?.body || 'A new profitable watch was just listed.';
-  const linkUrl = payload.data?.url || payload.data?.link || 'https://ebay-1e4.pages.dev/';
+  const rawUrl = payload.data?.go || payload.data?.url || payload.data?.link || '';
+  const itemId = payload.data?.item_id || payload.data?.id || (rawUrl.match(/\/(\d{9,14})/)?.[1]) || '';
+  const directEbayUrl = itemId ? ('https://www.ebay.com/itm/' + itemId) : (rawUrl || 'https://www.ebay.com');
+  const pwaRedirectUrl = `https://ebay-1e4.pages.dev/?go=${encodeURIComponent(directEbayUrl)}&item_id=${itemId}`;
   const icon = payload.data?.image_url || 'https://ir.ebaystatic.com/cr/v/c1/ebay-logo-1-1.png';
-  const itemId = payload.data?.item_id || payload.data?.id || (linkUrl.match(/\/(\d{9,14})/)?.[1]) || 'deal';
 
   const notificationOptions = {
     body: body,
@@ -40,11 +39,13 @@ messaging.onBackgroundMessage((payload) => {
     badge: icon,
     image: icon,
     data: {
-      url: linkUrl,
-      link: linkUrl,
+      url: directEbayUrl,
+      link: pwaRedirectUrl,
+      go: directEbayUrl,
+      item_id: itemId,
       FCM_MSG: payload
     },
-    tag: 'ebay-deal-' + itemId,
+    tag: 'ebay-deal-' + (itemId || 'deal'),
     renotify: false,
     vibrate: [200, 100, 200, 100, 200]
   };
@@ -52,32 +53,44 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(title, notificationOptions);
 });
 
-// Handle notification click to open the exact eBay listing directly
+// Handle notification click to open the exact eBay watch listing directly
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const data = event.notification.data || {};
-  let targetUrl = data.url ||
+  let targetUrl = data.go ||
+                  data.url ||
                   data.link ||
                   data.FCM_MSG?.fcmOptions?.link ||
                   data.FCM_MSG?.notification?.click_action ||
+                  data.FCM_MSG?.data?.go ||
                   data.FCM_MSG?.data?.url ||
                   data.FCM_MSG?.data?.link ||
                   'https://www.ebay.com';
 
-  // If URL has open.html, extract the direct eBay listing URL
-  if (targetUrl.includes('open.html')) {
-    let match = targetUrl.match(/id=(\d{9,14})/);
-    if (match) {
-      targetUrl = 'https://www.ebay.com/itm/' + match[1];
-    }
-  }
+  // Extract clean eBay item ID
+  let itemId = data.item_id ||
+               (targetUrl.match(/\/itm\/(?:[^\/]+\/)?(\d{9,14})/)?.[1]) ||
+               (targetUrl.match(/item_id=(\d{9,14})/)?.[1]) ||
+               (targetUrl.match(/id=(\d{9,14})/)?.[1]);
 
-  console.log('[firebase-messaging-sw.js] Opening listing directly:', targetUrl);
+  let directListingUrl = itemId ? ('https://www.ebay.com/itm/' + itemId) : targetUrl;
+  let inScopeUrl = `https://ebay-1e4.pages.dev/?go=${encodeURIComponent(directListingUrl)}&item_id=${itemId || ''}`;
 
-  // Directly open the exact listing in the system browser / eBay app
-  // Do NOT navigate inside the PWA container!
-  if (clients.openWindow) {
-    event.waitUntil(clients.openWindow(targetUrl));
-  }
+  console.log('[firebase-messaging-sw.js] Navigating directly to eBay listing:', directListingUrl);
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If a window is already open, navigate it to the in-scope redirect which immediately opens the eBay listing
+      for (let client of windowClients) {
+        if ('navigate' in client) {
+          return client.navigate(inScopeUrl);
+        }
+      }
+      // Otherwise open a new window pointing to the in-scope redirect
+      if (clients.openWindow) {
+        return clients.openWindow(inScopeUrl);
+      }
+    })
+  );
 });
